@@ -46,6 +46,9 @@ export default defineConfig({
       allow: ["app", "node_modules"],
     },
   },
+  optimizeDeps: {
+    include: ['react-chartjs-2', 'chart.js'],
+  },
   plugins: [
     remix({
       ignoredRouteFiles: ["**/.*"],
