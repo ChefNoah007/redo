@@ -1,7 +1,7 @@
 import { json } from "@remix-run/node";
 import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
-import prisma from "../app/db.server.cjs";
+import prisma from "./db.server.cjs";
 
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY,
