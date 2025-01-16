@@ -1,0 +1,36 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "be08ec147dace0a73fee096e4a6e9ca8"
+application_url = "https://tours-issn-citizens-ir.trycloudflare.com"
+embedded = true
+name = "redo"
+handle = "redo"
+
+[webhooks]
+api_version = "2025-01"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
+
+[auth]
+redirect_urls = [
+  "https://tours-issn-citizens-ir.trycloudflare.com/auth/callback",
+  "https://tours-issn-citizens-ir.trycloudflare.com/auth/shopify/callback",
+  "https://tours-issn-citizens-ir.trycloudflare.com/api/auth/callback"
+]
+
+[pos]
+embedded = false
+
+[build]
+dev_store_url = "quickstart-e5f7c1c4.myshopify.com"
+automatically_update_urls_on_dev = true
