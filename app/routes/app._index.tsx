@@ -112,7 +112,7 @@ export default function Index() {
       dayEnd.setHours(23, 59, 59, 999);
 
       try {
-        const response = await fetch("http://localhost:5001/proxy", {
+        const response = await fetch("https://redo-ia4o.onrender.com/proxy", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -14,7 +14,7 @@ import {
 
 const API_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
 const PROJECT_ID = "6703af9afcd0ea507e9c5369";
-const API_URL = "http://localhost:5001";
+const API_URL = "https://redo-ia4o.onrender.com";
 
 interface Transcript {
   _id: string;
@@ -50,7 +50,7 @@ export default function TranscriptViewer() {
   const fetchTranscripts = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5001/transcripts", {
+      const response = await fetch("https://redo-ia4o.onrender.com/transcripts", {
         method: "GET",
         headers: {
           Authorization: `${API_KEY}`,
@@ -78,7 +78,7 @@ export default function TranscriptViewer() {
     console.log("Selected Transcript ID:", transcriptID);
     setSelectedID(transcriptID); // Setzt die ID für den Schatten
     try {
-      const response = await fetch(`http://localhost:5001/transcripts/${transcriptID}`, {
+      const response = await fetch(`https://redo-ia4o.onrender.com/transcripts/${transcriptID}`, {
         method: "GET",
         headers: {
           Authorization: "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi",
