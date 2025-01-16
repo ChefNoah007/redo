@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { useFetcher } from "@remix-run/react";
 import {
@@ -6,374 +6,329 @@ import {
   Layout,
   Text,
   Card,
-  Spinner,
+  Button,
+  BlockStack,
+  Box,
   List,
-  Select,
+  Link,
+  InlineStack,
 } from "@shopify/polaris";
-import { TitleBar } from "@shopify/app-bridge-react";
-import {
-  BarElement, // WICHTIG
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { Line } from "react-chartjs-2";
+import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
-import { Bar } from "react-chartjs-2";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement, // HIER hinzufügen
-  Title,
-  Tooltip,
-  Legend
-);
-
-const API_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
-const PROJECT_ID = "6703af9afcd0ea507e9c5369";
-
-interface IntentData {
-  name: string;
-  count: number;
-}
-
-interface DailyInteractionData {
-  date: string;
-  count: number;
-}
-
-interface ApiResult {
-  result: Array<{
-    count?: number;
-    intents?: IntentData[];
-    dailyInteractions?: DailyInteractionData[];
-    averageSessionDuration?: number;
-    messagesExchanged?: number;
-    errorRate?: number;
-    newUsers?: number;
-  }>;
-}
-
-const timeRanges = [
-  { label: "Last 7 Days", value: "7d" },
-  { label: "Last Month", value: "30d" },
-  { label: "Last 3 Months", value: "90d" },
-  { label: "Last 6 Months", value: "180d" },
-  { label: "Last 12 Months", value: "365d" },
-];
-
-const calculateTimeRange = (timeRange: string): { startTime: string; endTime: string } => {
-  const now = new Date();
-  const endTime = now.toISOString();
-  const startTime = new Date(now.getTime() - parseInt(timeRange) * 24 * 60 * 60 * 1000).toISOString();
-  return { startTime, endTime };
-};
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
+
   return null;
 };
 
-export default function Index() {
-  const fetcher = useFetcher();
-  const [interactions, setInteractions] = useState<number | null>(null);
-  const [uniqueUsers, setUniqueUsers] = useState<number | null>(null);
-  const [topIntents, setTopIntents] = useState<IntentData[] | null>(null);
-  const [sessions, setSessions] = useState<number | null>(null);
-  const [dailyInteractions, setDailyInteractions] = useState<DailyInteractionData[] | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<string>("7d");
-  const [cachedData, setCachedData] = useState<Record<string, DailyInteractionData[]>>({}); // Cache für dailyInteractions
-
-  const fetchDailyInteractions = async (selectedTimeRange: string) => {
-    if (cachedData[selectedTimeRange]) {
-      console.log(`Using cached data for ${selectedTimeRange}`);
-      return cachedData[selectedTimeRange]; // Verwende gecachte Daten
-    }
-
-    const days = parseInt(selectedTimeRange.replace("d", "")); // Anzahl der Tage auslesen
-    const now = new Date();
-    const dailyData: DailyInteractionData[] = [];
-
-    for (let i = 0; i < days; i++) {
-      const dayStart = new Date(now);
-      dayStart.setHours(0, 0, 0, 0);
-      dayStart.setDate(dayStart.getDate() - i);
-
-      const dayEnd = new Date(dayStart);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      try {
-        const response = await fetch("http://localhost:5001/proxy", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query: [
-              {
-                name: "interactions",
-                filter: {
-                  projectID: PROJECT_ID,
-                  startTime: dayStart.toISOString(),
-                  endTime: dayEnd.toISOString(),
-                  platform: { not: "canvas-prototype" },
-                },
-              },
-            ],
-          }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Error: ${response.status} - ${errorText}`);
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { admin } = await authenticate.admin(request);
+  const color = ["Red", "Orange", "Yellow", "Green"][
+    Math.floor(Math.random() * 4)
+  ];
+  const response = await admin.graphql(
+    `#graphql
+      mutation populateProduct($product: ProductCreateInput!) {
+        productCreate(product: $product) {
+          product {
+            id
+            title
+            handle
+            status
+            variants(first: 10) {
+              edges {
+                node {
+                  id
+                  price
+                  barcode
+                  createdAt
+                }
+              }
+            }
+          }
         }
-
-        const data: ApiResult = await response.json();
-        const localDate = new Date(dayStart);
-        dailyData.push({
-          date: localDate.toISOString().split("T")[0], // Format als YYYY-MM-DD
-          count: data.result[0]?.count || 0,
-        });
-      } catch (error) {
-        console.error(`Error fetching data for ${dayStart.toISOString()}:`, error);
-      }
-    }
-
-    const reversedData = dailyData.reverse(); // Daten in aufsteigender Reihenfolge sortieren
-    setCachedData((prev) => ({ ...prev, [selectedTimeRange]: reversedData })); // Cache aktualisieren
-    return reversedData;
-  };
-
-  const fetchDashboardData = async (selectedTimeRange: string) => {
-    setIsLoading(true);
-
-    try {
-      const dailyData = await fetchDailyInteractions(selectedTimeRange);
-      setDailyInteractions(dailyData);
-
-      const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
-      const response = await fetch("http://localhost:5001/proxy", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      }`,
+    {
+      variables: {
+        product: {
+          title: `${color} Snowboard`,
         },
-        body: JSON.stringify({
-          query: [
-            {
-              name: "sessions",
-              filter: {
-                projectID: PROJECT_ID,
-                startTime,
-                endTime,
-                platform: { not: "canvas-prototype" },
-              },
-            },
-            {
-              name: "top_intents",
-              filter: {
-                projectID: PROJECT_ID,
-                limit: 5,
-                startTime,
-                endTime,
-                platform: { not: "canvas-prototype" },
-              },
-            },
-            {
-              name: "unique_users",
-              filter: {
-                projectID: PROJECT_ID,
-                startTime,
-                endTime,
-                platform: { not: "canvas-prototype" },
-              },
-            },
-          ],
-        }),
-      });
+      },
+    },
+  );
+  const responseJson = await response.json();
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error: ${response.status} - ${errorText}`);
+  const product = responseJson.data!.productCreate!.product!;
+  const variantId = product.variants.edges[0]!.node!.id!;
+
+  const variantResponse = await admin.graphql(
+    `#graphql
+    mutation shopifyRemixTemplateUpdateVariant($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+      productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+        productVariants {
+          id
+          price
+          barcode
+          createdAt
+        }
       }
+    }`,
+    {
+      variables: {
+        productId: product.id,
+        variants: [{ id: variantId, price: "100.00" }],
+      },
+    },
+  );
 
-      const data: ApiResult = await response.json();
-      setSessions(data.result[0]?.count || 0);
-      setTopIntents(data.result[1]?.intents || []);
-      setUniqueUsers(data.result[2]?.count || 0);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-    } finally {
-      setIsLoading(false);
-    }
+  const variantResponseJson = await variantResponse.json();
+
+  return {
+    product: responseJson!.data!.productCreate!.product,
+    variant:
+      variantResponseJson!.data!.productVariantsBulkUpdate!.productVariants,
   };
+};
+
+export default function Index() {
+  const fetcher = useFetcher<typeof action>();
+
+  const shopify = useAppBridge();
+  const isLoading =
+    ["loading", "submitting"].includes(fetcher.state) &&
+    fetcher.formMethod === "POST";
+  const productId = fetcher.data?.product?.id.replace(
+    "gid://shopify/Product/",
+    "",
+  );
 
   useEffect(() => {
-    fetchDashboardData(timeRange);
-  }, [timeRange]);
-
-  const dynamicLabels = dailyInteractions?.map((entry) => {
-    const date = new Date(entry.date);
-    date.setDate(date.getDate() + 1); // Verschiebe das Datum um einen Tag nach vorne
-    return date.toLocaleDateString("de-DE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "2-digit",
-    });
-  }) || [];
-
-  const dynamicDataPoints = dailyInteractions?.map((entry) => entry.count) || [];
-
-  const lineChartData = {
-    labels: dynamicLabels,
-    datasets: [
-      {
-        label: "Interactions Over Time",
-        data: dynamicDataPoints,
-        borderColor: "#36a2eb",
-        backgroundColor: "rgba(54, 162, 235, 0.2)",
-        tension: 0.4,
-      },
-    ],
-  };
-
-  const lineChartOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: "top" as const,
-      },
-      title: {
-        display: true,
-        text: "Interactions Over Time",
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          stepSize: Math.ceil((Math.max(...dynamicDataPoints) || 1) / 5),
-        },
-      },
-    },
-  };
-
-  const usersAndSessionsChartData = {
-    labels: dynamicLabels,
-    datasets: [
-      {
-        label: "Unique Users Over Time",
-        data: dailyInteractions?.map((entry) => entry.count), // Ersetze durch echte Daten für Users
-        borderColor: "#FF6384",
-        backgroundColor: "rgba(255, 99, 132, 0.2)",
-        tension: 0.4,
-      },
-      {
-        label: "Sessions Over Time",
-        data: dailyInteractions?.map((entry) => entry.count), // Ersetze durch echte Daten für Sessions
-        borderColor: "#36A2EB",
-        backgroundColor: "rgba(54, 162, 235, 0.2)",
-        tension: 0.4,
-      },
-    ],
-  };  
-
-  const barChartData = {
-    labels: topIntents?.map((intent) => intent.name) || [],
-    datasets: [
-      {
-        label: "Top Intents",
-        data: topIntents?.map((intent) => intent.count) || [],
-        backgroundColor: [
-          "#FF6384",
-          "#36A2EB",
-          "#FFCE56",
-          "#4BC0C0",
-          "#9966FF",
-        ],
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  const barChartOptions = {
-    responsive: true,
-    indexAxis: "y", // Muss explizit "y" oder "x" sein
-    plugins: {
-      legend: {
-        position: "top", // "top", "left", "right", "bottom", "center"
-      },
-      title: {
-        display: true,
-        text: "Top Intents",
-      },
-    },
-    scales: {
-      x: {
-        beginAtZero: true,
-      },
-    },
-  } as const; // 'as const' erzwingt die exakten Werte
-  
-  
-  
-  
+    if (productId) {
+      shopify.toast.show("Product created");
+    }
+  }, [productId, shopify]);
+  const generateProduct = () => fetcher.submit({}, { method: "POST" });
 
   return (
     <Page>
-      <TitleBar title="Voiceflow Dashboard" />
-      <Layout>
-        {/* Zeitbereichsauswahl */}
-        <Layout.Section>
-          <Card>
-            <Text as="h2" variant="headingMd">
-              Dashboard
-            </Text>
-            <Select
-              label="Select Time Range"
-              options={timeRanges}
-              onChange={(value) => setTimeRange(value)}
-              value={timeRange}
-            />
-          </Card>
-        </Layout.Section>
-  
-        {/* Interactions */}
-        <Layout.Section>
-          <Card>
-            <Text as="h3" variant="headingMd">
-              Interactions
-            </Text>
-            <Line data={lineChartData} options={lineChartOptions} />
-          </Card>
-        </Layout.Section>
-  
-        {/* Sessions and Users vs. Top Intents */}
-        <Layout.Section variant="oneHalf">
-          <Card>
-            <Text as="h3" variant="headingMd">
-              Sessions and Users
-            </Text>
-            <Line data={usersAndSessionsChartData} options={lineChartOptions} />
-          </Card>
-        </Layout.Section>
-        <Layout.Section variant="oneHalf">
-          <Card>
-            <Text as="h3" variant="headingMd">
-              Top Intents
-            </Text>
-            <Bar data={barChartData} options={barChartOptions} />
-          </Card>
-        </Layout.Section>
-      </Layout>
+      <TitleBar title="Remix app template">
+        <button variant="primary" onClick={generateProduct}>
+          Generate a product
+        </button>
+      </TitleBar>
+      <BlockStack gap="500">
+        <Layout>
+          <Layout.Section>
+            <Card>
+              <BlockStack gap="500">
+                <BlockStack gap="200">
+                  <Text as="h2" variant="headingMd">
+                    Congrats on creating a new Shopify app 🎉
+                  </Text>
+                  <Text variant="bodyMd" as="p">
+                    This embedded app template uses{" "}
+                    <Link
+                      url="https://shopify.dev/docs/apps/tools/app-bridge"
+                      target="_blank"
+                      removeUnderline
+                    >
+                      App Bridge
+                    </Link>{" "}
+                    interface examples like an{" "}
+                    <Link url="/app/additional" removeUnderline>
+                      additional page in the app nav
+                    </Link>
+                    , as well as an{" "}
+                    <Link
+                      url="https://shopify.dev/docs/api/admin-graphql"
+                      target="_blank"
+                      removeUnderline
+                    >
+                      Admin GraphQL
+                    </Link>{" "}
+                    mutation demo, to provide a starting point for app
+                    development.
+                  </Text>
+                </BlockStack>
+                <BlockStack gap="200">
+                  <Text as="h3" variant="headingMd">
+                    Get started with products
+                  </Text>
+                  <Text as="p" variant="bodyMd">
+                    Generate a product with GraphQL and get the JSON output for
+                    that product. Learn more about the{" "}
+                    <Link
+                      url="https://shopify.dev/docs/api/admin-graphql/latest/mutations/productCreate"
+                      target="_blank"
+                      removeUnderline
+                    >
+                      productCreate
+                    </Link>{" "}
+                    mutation in our API references.
+                  </Text>
+                </BlockStack>
+                <InlineStack gap="300">
+                  <Button loading={isLoading} onClick={generateProduct}>
+                    Generate a product
+                  </Button>
+                  {fetcher.data?.product && (
+                    <Button
+                      url={`shopify:admin/products/${productId}`}
+                      target="_blank"
+                      variant="plain"
+                    >
+                      View product
+                    </Button>
+                  )}
+                </InlineStack>
+                {fetcher.data?.product && (
+                  <>
+                    <Text as="h3" variant="headingMd">
+                      {" "}
+                      productCreate mutation
+                    </Text>
+                    <Box
+                      padding="400"
+                      background="bg-surface-active"
+                      borderWidth="025"
+                      borderRadius="200"
+                      borderColor="border"
+                      overflowX="scroll"
+                    >
+                      <pre style={{ margin: 0 }}>
+                        <code>
+                          {JSON.stringify(fetcher.data.product, null, 2)}
+                        </code>
+                      </pre>
+                    </Box>
+                    <Text as="h3" variant="headingMd">
+                      {" "}
+                      productVariantsBulkUpdate mutation
+                    </Text>
+                    <Box
+                      padding="400"
+                      background="bg-surface-active"
+                      borderWidth="025"
+                      borderRadius="200"
+                      borderColor="border"
+                      overflowX="scroll"
+                    >
+                      <pre style={{ margin: 0 }}>
+                        <code>
+                          {JSON.stringify(fetcher.data.variant, null, 2)}
+                        </code>
+                      </pre>
+                    </Box>
+                  </>
+                )}
+              </BlockStack>
+            </Card>
+          </Layout.Section>
+          <Layout.Section variant="oneThird">
+            <BlockStack gap="500">
+              <Card>
+                <BlockStack gap="200">
+                  <Text as="h2" variant="headingMd">
+                    App template specs
+                  </Text>
+                  <BlockStack gap="200">
+                    <InlineStack align="space-between">
+                      <Text as="span" variant="bodyMd">
+                        Framework
+                      </Text>
+                      <Link
+                        url="https://remix.run"
+                        target="_blank"
+                        removeUnderline
+                      >
+                        Remix
+                      </Link>
+                    </InlineStack>
+                    <InlineStack align="space-between">
+                      <Text as="span" variant="bodyMd">
+                        Database
+                      </Text>
+                      <Link
+                        url="https://www.prisma.io/"
+                        target="_blank"
+                        removeUnderline
+                      >
+                        Prisma
+                      </Link>
+                    </InlineStack>
+                    <InlineStack align="space-between">
+                      <Text as="span" variant="bodyMd">
+                        Interface
+                      </Text>
+                      <span>
+                        <Link
+                          url="https://polaris.shopify.com"
+                          target="_blank"
+                          removeUnderline
+                        >
+                          Polaris
+                        </Link>
+                        {", "}
+                        <Link
+                          url="https://shopify.dev/docs/apps/tools/app-bridge"
+                          target="_blank"
+                          removeUnderline
+                        >
+                          App Bridge
+                        </Link>
+                      </span>
+                    </InlineStack>
+                    <InlineStack align="space-between">
+                      <Text as="span" variant="bodyMd">
+                        API
+                      </Text>
+                      <Link
+                        url="https://shopify.dev/docs/api/admin-graphql"
+                        target="_blank"
+                        removeUnderline
+                      >
+                        GraphQL API
+                      </Link>
+                    </InlineStack>
+                  </BlockStack>
+                </BlockStack>
+              </Card>
+              <Card>
+                <BlockStack gap="200">
+                  <Text as="h2" variant="headingMd">
+                    Next steps
+                  </Text>
+                  <List>
+                    <List.Item>
+                      Build an{" "}
+                      <Link
+                        url="https://shopify.dev/docs/apps/getting-started/build-app-example"
+                        target="_blank"
+                        removeUnderline
+                      >
+                        {" "}
+                        example app
+                      </Link>{" "}
+                      to get started
+                    </List.Item>
+                    <List.Item>
+                      Explore Shopify’s API with{" "}
+                      <Link
+                        url="https://shopify.dev/docs/apps/tools/graphiql-admin-api"
+                        target="_blank"
+                        removeUnderline
+                      >
+                        GraphiQL
+                      </Link>
+                    </List.Item>
+                  </List>
+                </BlockStack>
+              </Card>
+            </BlockStack>
+          </Layout.Section>
+        </Layout>
+      </BlockStack>
     </Page>
   );
 }
