@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "be08ec147dace0a73fee096e4a6e9ca8"
-application_url = "https://redo-ia4o.onrender.com"
+application_url = "https://financial-logos-fewer-element.trycloudflare.com"
 embedded = true
 name = "redo"
 handle = "redo"
@@ -23,9 +23,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://redo-ia4o.onrender.com/auth/callback",
-  "https://redo-ia4o.onrender.com/auth/shopify/callback",
-  "https://redo-ia4o.onrender.com/api/auth/callback"
+  "https://financial-logos-fewer-element.trycloudflare.com/auth/callback",
+  "https://financial-logos-fewer-element.trycloudflare.com/auth/shopify/callback",
+  "https://financial-logos-fewer-element.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]
