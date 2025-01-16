@@ -1,0 +1,237 @@
+{% assign product_name = block.settings.product.title %}
+{% assign page_slug = block.settings.page_slug %}
+{% assign bot_background_colour = block.settings.bot_background_colour %}
+{% assign user_background_colour = block.settings.user_background_colour %}
+{% assign user_text_colour = block.settings.user_text_colour %}
+{% assign bot_text_colour = block.settings.bot_text_colour %}
+{% assign send_label = block.settings.send_label %}
+{% assign type_here_label = block.settings.type_here_label %}
+
+<style>
+    .vf-message-user {
+        background-color: {{ user_background_colour }};
+        color: {{ user_text_colour }};
+    }
+
+    .vf-message-agent {
+        background-color: {{ bot_background_colour }};
+        color: {{ bot_text_colour }};
+    }
+
+    #chat-send-button{
+        background-color: {{ user_background_colour }};
+        color: {{ user_text_colour }};
+        border: 1px {{ user_background_colour }};
+        padding: 10px 10px 8px 10px!important;
+        border-radius: 25px!important;        
+    }
+
+    #chat-send-button img{
+        width: 20px;
+        height: 20px;
+    }
+
+    .vf-message-button{
+        background-color: {{ user_background_colour }};
+        color: {{ user_text_colour }};
+        border: 1px {{ user_background_colour }};
+    }
+
+    .vf-send-button-icon{
+        stroke: {{ user_text_colour }};
+    }
+
+    /* Add any additional styles for the chatbox and messages here */
+    .AIchatbot {
+        position: relative;
+    }
+
+    #chat-box-mob {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 15px 15px 50px;
+        background-color: #f7fbff;
+        border-top-right-radius: 15px;
+        border-top-left-radius: 15px;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 9999;
+    }
+
+    .toggle-button {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        /* background-color: {{ user_background_colour }}; */
+        background-color: #f7fbff;
+        color: {{ user_text_colour }};
+        border: 0;
+        border-top: 1px solid #eee;
+        padding: 8px 10px 5px 9px;
+        border-radius: 0;
+        cursor: pointer;
+        z-index: 999999; 
+        transition: transform 0.3s ease;
+    }
+    
+    .toggle-button img{
+        transition: transform 0.3s ease;
+    }
+
+    .arrow {
+        transform: rotate(0deg);
+        animation: upDown 2s infinite ease-in-out;
+    }    
+
+    @keyframes upDown {
+        0%, 100% {
+            transform: translateY(0) rotate(0deg);
+        }
+        50% {
+            transform: translateY(-5px) rotate(0deg);
+        }
+    }
+
+    .rotated {
+        transform: rotate(180deg);
+        transition: transform 0.3s ease;
+    }  
+    
+    #toggleChat-Input {
+        display: block;
+        text-align: center;
+        color: #000;
+        font-size: 16px;
+        font-weight: 500;
+        text-transform: capitalize;
+        margin: 0 0 4px;
+    }
+
+    #chat-box{
+        margin-bottom: 20px;
+    }
+
+    .toggle-button input{
+        border-radius: 25px;
+        box-shadow: none;
+        outline: none;
+        border: 1px solid #000;
+        margin: 12px 0 8px;
+        width: 100%;
+        padding: 10px 16px;
+    }
+
+    /* Hide toggle button and chatbox on larger screens */
+    @media (min-width: 768px) {
+        .toggle-button {
+            display: none;
+        }
+        #chat-container{
+            margin-top: -75px;
+        }
+        #chat-box-mob {
+            display: block; 
+            position: static;
+            box-shadow: none;
+            max-height: initial !important;
+        }
+        .chat-box-mob h2{
+            display: none;
+        }
+    }
+    @media (max-width: 767px) {
+        #chat-all-button-container{
+            display: none!important;
+        }
+        .chat-box-mob h2{
+            text-align: center;
+        }
+        .vf-message{
+            font-size: 16px!important;
+            line-height: 20px;
+            border-radius: 8px!important;
+        }
+        #chat-text-input-container{
+            margin-bottom: 12px;
+        }
+        #chat-send-button{
+            width: 20%!important;
+            padding: 10px 10px 5px 10px !important;
+        }
+    }
+</style>
+
+<div class="AIchatbot">
+    <button id="toggle-chat" class="toggle-button">
+        <img src="https://cdn.shopify.com/s/files/1/0919/8511/7522/files/upload.png?v=1736018015" class="arrow" height="16" width="16" loading="lazy">
+        <div id="toggleChat-Input">Chat Now</div>
+    </button>    
+    
+    <div id="chat-box-mob" class="chat-box-mob">
+        <h2>{{ block.settings.chat_heading }}</h2>
+        {% render 'chat_box_mobile', product_name: product_name, page_slug: page_slug, send_label: send_label, type_here_label: type_here_label %}
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggleButton = document.getElementById('toggle-chat');
+        const chatBox = document.getElementById('chat-box-mob');
+
+        // Function to toggle chatbox visibility
+        function toggleChatBox() {
+            if (window.innerWidth < 768) { // Only toggle on mobile view
+                if (chatBox.style.display === 'none' || chatBox.style.display === '') {
+                    chatBox.style.display = 'block';
+                } else {
+                    chatBox.style.display = 'none';
+                }
+            }
+        }
+        toggleButton.addEventListener('click', toggleChatBox);
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const toggleChatButton = document.getElementById("toggle-chat");
+        toggleChatButton.addEventListener("click", function () {
+            const img = this.querySelector("img");
+            if (img) {
+                img.classList.toggle("rotated");
+            }
+        });
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const toggleChatButton = document.getElementById("toggle-chat");
+        const toggleChatInput = document.getElementById("toggleChat-Input");
+
+        toggleChatButton.addEventListener("click", function () {
+            if (toggleChatInput.style.display === "block" || !toggleChatInput.style.display) {
+                toggleChatInput.style.display = "none"; 
+            } else {
+                toggleChatInput.style.display = "block"; 
+            }
+        });
+    });
+</script>
+
+{% schema %}
+{
+    "name": "Foooter Voiceflow Chat",
+    "target": "section",
+    "settings": [
+        { "type": "product", "id": "product", "label": "Product Discussed", "autofill": true },
+        { "type": "text", "id": "page_slug", "label": "Page Handling Slug", "default": "none"},
+        { "type": "color", "id": "bot_background_colour", "label": "Bot Message Colour", "default": "#F3F3F3"},
+        { "type": "color", "id": "bot_text_colour", "label": "Bot Text Colour", "default": "#000000" },
+        { "type": "color", "id": "user_background_colour", "label": "User Message Colour", "default": "#7c2ee2" },
+        { "type": "color", "id": "user_text_colour", "label": "User Text Colour", "default": "#ffffff" },
+        { "type": "textarea", "id": "chat_heading", "label": "Chat Heading", "default": "✨ Learn more with AI ✨" },
+        { "type": "text", "id": "send_label", "label": "Send Button Label", "default": "Send" },
+        { "type": "text", "id": "type_here_label", "label": "Type Box Placeholder", "default": "Type your message here..."}
+    ]
+}
+{% endschema %}

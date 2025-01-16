@@ -1,0 +1,53 @@
+<!-- chat_box_mobile.liquid -->
+
+<link rel="stylesheet" type="text/css" href="{{ 'chat_styles.css' | asset_url }}">
+
+<!-- Hier ist jetzt alles auf "mobile" umbenannt -->
+<div id="chat-container-mobile" data-product-name="{{ product_name }}" data-page-slug="{{ page_slug }}">
+  
+  <div id="chat-box-mobile"></div>
+  
+  <div id="chat-all-button-container-mobile">
+    <div id="chat-box-typing-indicator-container-mobile" class="vf-message-button" style="display: none;">
+      <div class="chat-box-typing-indicator">   
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+
+
+    <div id="chat-add-to-cart-mobile" style="display: none;">
+      <form method="post" action="/cart/add">
+        <!-- 
+          Wenn du ein Produkt zuordnen willst, 
+          wird dieses Hidden-Feld genutzt (hier: block.settings.product.variants.first.id).
+        -->
+        <input name="id" value="{{ block.settings.product.variants.first.id }}" type="hidden" />
+        <input class="vf-message-button" name="add" value="Order Now" type="submit" />
+      </form>
+    </div>
+
+    <div id="chat-copy-link-mobile">
+      <button id="chat-copy-button-mobile" class="vf-message-button" style="display: none;">Share</button>
+    </div>
+  </div>
+
+  <div id="chat-button-box-mobile"></div>
+
+  <div id="chat-text-input-container-mobile">
+    <input type="text" id="chat-input-mobile" placeholder="{{ type_here_label }}" />
+    <button id="chat-send-button-mobile">
+      <img src="{{ 'send.svg' | asset_url }}" height="15" width="15" loading="lazy">
+    </button>    
+  </div>
+
+</div>
+
+<!-- 
+  Falls du eine separate JS-Datei für Mobile willst, nenne sie z. B. chat-box-mobile.js 
+  und passe darin die IDs an. 
+  Ansonsten könntest du dieselbe chat-box.js verwenden, 
+  sofern es mit den geänderten IDs harmoniert.
+-->
+<script src="{{ 'chat-box-mobile.js' | asset_url }}" defer></script>

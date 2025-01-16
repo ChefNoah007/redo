@@ -1,0 +1,81 @@
+{% unless request.device_type == 'mobile' %}
+{% assign product_name = block.settings.product.title %}
+{% assign page_slug = block.settings.page_slug %}
+{% assign bot_background_colour = block.settings.bot_background_colour %}
+{% assign user_background_colour = block.settings.user_background_colour %}
+{% assign user_text_colour = block.settings.user_text_colour %}
+{% assign bot_text_colour = block.settings.bot_text_colour %}
+{% assign send_label = block.settings.send_label %}
+{% assign type_here_label = block.settings.type_here_label %}
+
+<style>
+  .vf-message-user {
+      background-color: {{ user_background_colour }};
+      color: {{ user_text_colour }};
+  }
+
+  .vf-message-agent {
+      background-color: {{ bot_background_colour }};
+      color: {{ bot_text_colour }};
+  }
+
+  #chat-send-button {
+      background-color: {{ user_background_colour }};
+      color: {{ user_text_colour }};
+      border: 1px {{ user_background_colour }};
+      padding: 10px 10px 8px 10px !important;
+      border-radius: 25px !important;
+  }
+
+  #chat-send-button img {
+      width: 20px;
+      height: 20px;
+  }
+
+  .vf-message-button {
+      background-color: {{ user_background_colour }};
+      color: {{ user_text_colour }};
+      border: 1px {{ user_background_colour }};
+  }
+
+  .vf-send-button-icon {
+      stroke: {{ user_text_colour }};
+  }
+
+  .AIchatbot {
+      position: relative;
+  }
+
+  #chat-box {
+      margin-top: 100px;
+  }
+</style>
+
+<div class="AIchatbot">
+    <h2 class="desktop-heading">{{ block.settings.chat_heading }}</h2>
+    {% render 'chat_box', 
+       product_name: product_name, 
+       page_slug: page_slug, 
+       send_label: send_label, 
+       type_here_label: type_here_label 
+    %}
+</div>
+{% endunless %}
+
+{% schema %}
+{
+  "name": "Desktop Voiceflow Chat",
+  "target": "section",
+  "settings": [
+    { "type": "product", "id": "product", "label": "Product Discussed", "autofill": true },
+    { "type": "text", "id": "page_slug", "label": "Page Handling Slug", "default": "none"},
+    { "type": "color", "id": "bot_background_colour", "label": "Bot Message Colour", "default": "#F3F3F3"},
+    { "type": "color", "id": "bot_text_colour", "label": "Bot Text Colour", "default": "#000000" },
+    { "type": "color", "id": "user_background_colour", "label": "User Message Colour", "default": "#7c2ee2" },
+    { "type": "color", "id": "user_text_colour", "label": "User Text Colour", "default": "#ffffff" },
+    { "type": "textarea", "id": "chat_heading", "label": "Chat Heading", "default": "✨ Learn more with AI ✨" },
+    { "type": "text", "id": "send_label", "label": "Send Button Label", "default": "Send" },
+    { "type": "text", "id": "type_here_label", "label": "Type Box Placeholder", "default": "Type your message here..."}
+  ]
+}
+{% endschema %}
