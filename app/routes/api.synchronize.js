@@ -19,7 +19,7 @@ export const action = async ({ request }) => {
     const body = await request.json();
     const overwrite = body.overwrite === true; // Standard ist false, wenn nicht übergeben
 
-    const shopDomain = "quickstart-e5f7c1c4.myshopify.com";
+    const shopDomain = "goodbean.coffee";
     const offlineSessionId = shopify.session.getOfflineId(shopDomain);
 
     const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
