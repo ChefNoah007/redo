@@ -13,8 +13,12 @@ const shopify = shopifyApi({
   sessionStorage: new PrismaSessionStorage(prisma),
 });
 
-export const action = async () => {
+export const action = async ({ request }) => {
   try {
+    // Parse den Body, um das `overwrite`-Flag zu erhalten
+    const body = await request.json();
+    const overwrite = body.overwrite === true; // Standard ist false, wenn nicht übergeben
+
     const shopDomain = "quickstart-e5f7c1c4.myshopify.com";
     const offlineSessionId = shopify.session.getOfflineId(shopDomain);
 
@@ -50,10 +54,16 @@ export const action = async () => {
       ProductDescription: product.body_html || "",
     }));
 
+    // Voiceflow URL mit optionalem `overwrite`
+    let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload/table";
+    if (overwrite) {
+      voiceflowUrl += "?overwrite=true";
+    }
+
     const voiceflowData = {
       data: {
         schema: {
-          searchableFields: ["ProductName"],
+          searchableFields: ["ProductName", "ProductID", "ProductPrice", "ProductDescription"],
           metadataFields: ["ProductID", "ProductPrice", "ProductDescription"],
         },
         name: "ShopifyProducts",
@@ -61,7 +71,7 @@ export const action = async () => {
       },
     };
 
-    const voiceflowResponse = await fetch("https://api.voiceflow.com/v1/knowledge-base/docs/upload/table", {
+    const voiceflowResponse = await fetch(voiceflowUrl, {
       method: "POST",
       headers: {
         Authorization: "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi",
@@ -73,7 +83,8 @@ export const action = async () => {
     if (voiceflowResponse.ok) {
       return json({ success: true });
     } else {
-      return json({ success: false, error: "Failed to upload data to Voiceflow." });
+      const errorDetails = await voiceflowResponse.json();
+      return json({ success: false, error: errorDetails });
     }
   } catch (error) {
     console.error("Synchronization error:", error);

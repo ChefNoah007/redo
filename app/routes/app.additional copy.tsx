@@ -1,18 +1,13 @@
 // app/routes/app.additional copy.tsx
 import { TitleBar } from '@shopify/app-bridge-react';
 import {
-  Box,
-  Button,
-  Card,
-  Layout,
-  Link,
-  List,
   Page,
-  Spinner,
-  Text,
-  BlockStack,
+  Layout,
+  Card,
+  Button,
   Toast,
   Frame,
+  Checkbox, // <-- wir importieren Checkbox
 } from '@shopify/polaris';
 import { useState } from 'react';
 
@@ -20,15 +15,19 @@ export default function SyncPage() {
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [overwrite, setOverwrite] = useState(false); 
+  // ⬆️ State für die Checkbox
 
   const handleSynchronize = async () => {
     setIsSynchronizing(true);
     try {
-      const response = await fetch('https://redo-ia4o.onrender.com/api/synchronize', {
+      // ⬇️ Body enthält jetzt { overwrite }
+      const response = await fetch('http://localhost:5001/api/synchronize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ overwrite }), // wichtig!
       });
       const data = await response.json();
 
@@ -51,6 +50,12 @@ export default function SyncPage() {
         <Layout>
           <Layout.Section>
             <Card>
+              {/* Checkbox, um Overwrite zu wählen */}
+              <Checkbox
+                label="Overwrite existing data in Voiceflow?"
+                checked={overwrite}
+                onChange={(newChecked) => setOverwrite(newChecked)}
+              />
               <Button
                 disabled={isSynchronizing}
                 onClick={handleSynchronize}
