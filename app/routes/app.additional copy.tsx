@@ -34,8 +34,9 @@ export default function SyncPage() {
       if (data.success) {
         setToastMessage('Synchronization successful!');
       } else {
-        setToastMessage('Synchronization failed: ' + data.error);
-      }
+        const errorMessage = typeof data.error === 'object' ? JSON.stringify(data.error) : data.error;
+        setToastMessage('Synchronization failed: ' + errorMessage);
+      }      
     } catch (error) {
       setToastMessage('An error occurred during synchronization.');
     }
