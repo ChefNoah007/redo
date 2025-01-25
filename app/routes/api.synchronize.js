@@ -36,11 +36,13 @@ export const action = async ({ request }) => {
       const { body, pageInfo } = await shopifyAPI.get({
         path: "products",
         query: {
-          limit: 250,
-          status: "active",
+          status: "active", // Nur aktive Produkte
           ...(nextPageCursor ? { page_info: nextPageCursor } : {}),
         },
       });
+
+      // Debugging: Logge die vollständige API-Antwort für ein Produkt
+      console.log("Shopify API Product Response:", JSON.stringify(body.products[0], null, 2));
 
       allProducts = [...allProducts, ...body.products];
       nextPageCursor = pageInfo?.nextPage?.query.page_info;
@@ -48,7 +50,6 @@ export const action = async ({ request }) => {
     }
 
     const normalizedItems = allProducts.map((product) => {
-      // Beschreibung und Titel säubern
       const removeHtmlRegex = /<[^>]*>?/gm;
       const removeNewlinesRegex = /[\r\n\t]+/g;
 
@@ -58,27 +59,24 @@ export const action = async ({ request }) => {
       let name = product.title || "";
       name = name.replace(removeNewlinesRegex, " ").trim();
 
-      // Produkt-URL generieren
       const productUrl = product.online_store_url || `https://${shopDomain}/products/${product.handle}`;
 
-      // Varianten formatieren
       const variants = product.variants.map((variant) => {
         return `${variant.title || "Default"}: ${variant.price ? `${variant.price} €` : "N/A"}`;
       });
 
-      const formattedVariants = variants.join(" | "); // Varianten als eine formatierte Liste
+      const formattedVariants = variants.join(" | ");
 
       return {
         ProductID: product.id.toString(),
         ProductName: name,
-        ProductPrice: product.variants?.[0]?.price ? `${product.variants[0].price} €` : "N/A", // Hauptpreis
+        ProductPrice: product.variants?.[0]?.price ? `${product.variants[0].price} €` : "N/A",
         ProductDescription: desc,
         ProductURL: productUrl,
-        ProductVariants: formattedVariants, // Varianten als String
+        ProductVariants: formattedVariants,
       };
     });
 
-    // Voiceflow URL mit optionalem `overwrite`
     let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload/table";
     if (overwrite) {
       voiceflowUrl += "?overwrite=true";
@@ -96,6 +94,7 @@ export const action = async ({ request }) => {
             "ProductVariants",
           ],
           metadataFields: [
+            "ProductName",
             "ProductID",
             "ProductPrice",
             "ProductDescription",
