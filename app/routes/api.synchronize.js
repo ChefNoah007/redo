@@ -15,9 +15,8 @@ const shopify = shopifyApi({
 
 export const action = async ({ request }) => {
   try {
-    // Parse den Body, um das `overwrite`-Flag zu erhalten
     const body = await request.json();
-    const overwrite = body.overwrite === true; // Standard ist false, wenn nicht übergeben
+    const overwrite = body.overwrite === true;
 
     const shopDomain = "coffee-principles.myshopify.com";
     const offlineSessionId = shopify.session.getOfflineId(shopDomain);
@@ -48,7 +47,7 @@ export const action = async ({ request }) => {
       hasNextPage = Boolean(nextPageCursor);
     }
 
-    const normalizedItems = allProducts.flatMap((product) => {
+    const normalizedItems = allProducts.map((product) => {
       // Beschreibung und Titel säubern
       const removeHtmlRegex = /<[^>]*>?/gm;
       const removeNewlinesRegex = /[\r\n\t]+/g;
@@ -63,14 +62,19 @@ export const action = async ({ request }) => {
       const productUrl = product.online_store_url || `https://${shopDomain}/products/${product.handle}`;
 
       // Varianten erstellen
-      const variants = product.variants || [];
-      return variants.map((variant) => ({
+      const variants = product.variants.map((variant) => ({
+        VariantName: variant.title || "Default",
+        VariantPrice: variant.price ? `${variant.price} €` : "N/A",
+      }));
+
+      return {
         ProductID: product.id.toString(),
-        ProductName: `${name} - ${variant.title}`.trim(),
-        ProductPrice: variant.price ? `${variant.price} €` : "N/A",
+        ProductName: name,
+        ProductPrice: variants.length === 1 ? variants[0].VariantPrice : "Multiple Prices",
         ProductDescription: desc,
         ProductURL: productUrl,
-      }));
+        ProductVariants: variants, // Varianten hier als Liste hinzufügen
+      };
     });
 
     // Voiceflow URL mit optionalem `overwrite`
@@ -88,12 +92,14 @@ export const action = async ({ request }) => {
             "ProductPrice",
             "ProductDescription",
             "ProductURL",
+            "ProductVariants",
           ],
           metadataFields: [
             "ProductID",
             "ProductPrice",
             "ProductDescription",
             "ProductURL",
+            "ProductVariants",
           ],
         },
         name: "ShopifyProducts",
