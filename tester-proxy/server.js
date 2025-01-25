@@ -125,7 +125,7 @@ app.get("/transcripts/:transcriptID", async (req, res) => {
 // Beispiel: server.js
 app.post("/api/synchronize", async (req, res) => {
   try {
-    const shopDomain = "quickstart-e5f7c1c4.myshopify.com";
+    const shopDomain = "coffee-principles.myshopify.com";
     const offlineSessionId = shopify.session.getOfflineId(shopDomain);
 
     const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
