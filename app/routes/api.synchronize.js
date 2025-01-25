@@ -38,38 +38,41 @@ export const action = async ({ request }) => {
         path: "products",
         query: {
           limit: 250,
-          published_status: "published", // Nur aktive Produkte
+          status: "active", // Nur aktive Produkte
           ...(nextPageCursor ? { page_info: nextPageCursor } : {}),
         },
       });
-    
+
       allProducts = [...allProducts, ...body.products];
       nextPageCursor = pageInfo?.nextPage?.query.page_info;
       hasNextPage = Boolean(nextPageCursor);
-    }    
+    }
 
-    const normalizedItems = allProducts
-  .filter((product) => product.status === "active") // Nur aktive Produkte
-  .map((product) => ({
-    ProductID: product.id.toString(),
-    ProductName: product.title || "",
-    ProductDescription: product.body_html
-      ? product.body_html.replace(/<[^>]*>/g, "").replace(/[\r\n\t]+/g, " ").trim()
-      : "No description available.",
-    ProductURL: `https://${shopDomain}/products/${product.handle}`,
-    ImageURL: product.images?.[0]?.src || "No Image Available",
-    Tags: product.tags?.split(",") || [],
-    Variants: product.variants.map((variant) => ({
-      VariantID: variant.id.toString(),
-      Title: variant.title || "Default",
-      Price: variant.price || "N/A", // Setze "N/A" als Standardpreis
-      InventoryQuantity: variant.inventory_quantity || 0,
-      SKU: variant.sku || "No SKU",
-      Weight: variant.weight || "N/A",
-    })),
-    ProductPrice: product.variants?.[0]?.price || "N/A", // "N/A" für fehlende Preise
-  }));
+    const normalizedItems = allProducts.map((product) => {
+      // Beschreibung und Titel säubern
+      const removeHtmlRegex = /<[^>]*>?/gm;
+      const removeNewlinesRegex = /[\r\n\t]+/g;
 
+      let desc = product.body_html || "";
+      desc = desc.replace(removeHtmlRegex, "").replace(removeNewlinesRegex, " ").trim();
+
+      let name = product.title || "";
+      name = name.replace(removeNewlinesRegex, " ").trim();
+
+      // Standardpreis setzen, falls keiner vorhanden ist
+      const price = product.variants?.[0]?.price ?? "N/A";
+
+      // Produkt-URL generieren
+      const productUrl = product.online_store_url || `https://${shopDomain}/products/${product.handle}`;
+
+      return {
+        ProductID: product.id.toString(),
+        ProductName: name,
+        ProductPrice: price,
+        ProductDescription: desc,
+        ProductURL: productUrl, // URL hinzufügen
+      };
+    });
 
     // Voiceflow URL mit optionalem `overwrite`
     let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload/table";
@@ -83,10 +86,16 @@ export const action = async ({ request }) => {
           searchableFields: [
             "ProductName",
             "ProductID",
-            "ProductPrice", // Muss bei allen Produkten vorhanden sein
+            "ProductPrice",
             "ProductDescription",
+            "ProductURL",
           ],
-          metadataFields: ["ProductID", "ProductPrice", "ProductDescription"],
+          metadataFields: [
+            "ProductID",
+            "ProductPrice",
+            "ProductDescription",
+            "ProductURL",
+          ],
         },
         name: "ShopifyProducts",
         items: normalizedItems,
