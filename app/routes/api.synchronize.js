@@ -37,7 +37,7 @@ export const action = async ({ request }) => {
         path: "products",
         query: {
           limit: 250,
-          status: "active", // Nur aktive Produkte
+          status: "active",
           ...(nextPageCursor ? { page_info: nextPageCursor } : {}),
         },
       });
@@ -61,19 +61,20 @@ export const action = async ({ request }) => {
       // Produkt-URL generieren
       const productUrl = product.online_store_url || `https://${shopDomain}/products/${product.handle}`;
 
-      // Varianten erstellen
-      const variants = product.variants.map((variant) => ({
-        VariantName: variant.title || "Default",
-        VariantPrice: variant.price ? `${variant.price} €` : "N/A",
-      }));
+      // Varianten formatieren
+      const variants = product.variants.map((variant) => {
+        return `${variant.title || "Default"}: ${variant.price ? `${variant.price} €` : "N/A"}`;
+      });
+
+      const formattedVariants = variants.join(" | "); // Varianten als eine formatierte Liste
 
       return {
         ProductID: product.id.toString(),
         ProductName: name,
-        ProductPrice: variants.length === 1 ? variants[0].VariantPrice : "Multiple Prices",
+        ProductPrice: product.variants?.[0]?.price ? `${product.variants[0].price} €` : "N/A", // Hauptpreis
         ProductDescription: desc,
         ProductURL: productUrl,
-        ProductVariants: variants, // Varianten hier als Liste hinzufügen
+        ProductVariants: formattedVariants, // Varianten als String
       };
     });
 
