@@ -48,12 +48,28 @@ export const action = async ({ request }) => {
       hasNextPage = Boolean(nextPageCursor);
     }    
 
-    const normalizedItems = allProducts.map((product) => ({
-      ProductID: product.id.toString(),
-      ProductName: product.title || "",
-      ProductPrice: product.variants?.[0]?.price ?? "N/A",
-      ProductDescription: product.body_html || "",
-    }));
+    const normalizedItems = allProducts
+  .filter((product) => product.status === "active") // Nur aktive Produkte
+  .map((product) => ({
+    ProductID: product.id.toString(),
+    ProductName: product.title || "",
+    ProductDescription: product.body_html
+      .replace(/<[^>]*>/g, "") // HTML-Tags entfernen
+      .replace(/[\r\n\t]+/g, " ") // Neue Zeilen und Tabs entfernen
+      .trim(),
+    ProductURL: `https://${shopDomain}/products/${product.handle}`, // Produkt-URL
+    ImageURL: product.images?.[0]?.src || "No Image Available", // Erstes Bild
+    Tags: product.tags?.split(",") || [], // Tags
+    Variants: product.variants.map((variant) => ({
+      VariantID: variant.id.toString(),
+      Title: variant.title || "Default",
+      Price: variant.price || "N/A",
+      InventoryQuantity: variant.inventory_quantity || 0,
+      SKU: variant.sku || "No SKU",
+      Weight: variant.weight || "N/A",
+    })), // Varianten-Details
+  }));
+
 
     // Voiceflow URL mit optionalem `overwrite`
     let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload/table";
