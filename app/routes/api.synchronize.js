@@ -15,8 +15,9 @@ const shopify = shopifyApi({
 
 export const action = async ({ request }) => {
   try {
+    // Parse den Body, um das `overwrite`-Flag zu erhalten
     const body = await request.json();
-    const overwrite = body.overwrite === true;
+    const overwrite = body.overwrite === true; // Standard ist false, wenn nicht übergeben
 
     const shopDomain = "coffee-principles.myshopify.com";
     const offlineSessionId = shopify.session.getOfflineId(shopDomain);
@@ -37,7 +38,7 @@ export const action = async ({ request }) => {
         path: "products",
         query: {
           limit: 250,
-          status: "active", // Nur aktive Produkte abfragen
+          status: "active", // Nur aktive Produkte
           ...(nextPageCursor ? { page_info: nextPageCursor } : {}),
         },
       });
@@ -47,27 +48,33 @@ export const action = async ({ request }) => {
       hasNextPage = Boolean(nextPageCursor);
     }
 
-    const removeHtmlRegex = /<[^>]*>?/gm;
-    const removeNewlinesRegex = /[\r\n\t]+/g;
-
     const normalizedItems = allProducts.map((product) => {
-      const description = (product.body_html || "")
-        .replace(removeHtmlRegex, "")
-        .replace(removeNewlinesRegex, " ")
-        .trim();
+      // Beschreibung und Titel säubern
+      const removeHtmlRegex = /<[^>]*>?/gm;
+      const removeNewlinesRegex = /[\r\n\t]+/g;
 
-      const summary = description.split(". ").slice(0, 2).join(". ") + "."; // Erste zwei Sätze
+      let desc = product.body_html || "";
+      desc = desc.replace(removeHtmlRegex, "").replace(removeNewlinesRegex, " ").trim();
+
+      let name = product.title || "";
+      name = name.replace(removeNewlinesRegex, " ").trim();
+
+      // Standardpreis setzen, falls keiner vorhanden ist
+      const price = product.variants?.[0]?.price ?? "N/A";
+
+      // Produkt-URL generieren
+      const productUrl = product.online_store_url || `https://${shopDomain}/products/${product.handle}`;
 
       return {
-        ProductName: product.title || "N/A",
         ProductID: product.id.toString(),
-        ProductPrice: product.variants?.[0]?.price ? `${product.variants[0].price} €` : "N/A",
-        ProductDescription: description,
-        Summary: summary,
-        ProductURL: `https://${shopDomain}/products/${product.handle || ""}`,
+        ProductName: name,
+        ProductPrice: price,
+        ProductDescription: desc,
+        ProductURL: productUrl, // URL hinzufügen
       };
     });
 
+    // Voiceflow URL mit optionalem `overwrite`
     let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload/table";
     if (overwrite) {
       voiceflowUrl += "?overwrite=true";
@@ -76,8 +83,19 @@ export const action = async ({ request }) => {
     const voiceflowData = {
       data: {
         schema: {
-          searchableFields: ["ProductName", "ProductID", "ProductPrice", "ProductDescription"],
-          metadataFields: ["ProductID", "ProductPrice", "ProductDescription", "ProductURL", "Summary"],
+          searchableFields: [
+            "ProductName",
+            "ProductID",
+            "ProductPrice",
+            "ProductDescription",
+            "ProductURL",
+          ],
+          metadataFields: [
+            "ProductID",
+            "ProductPrice",
+            "ProductDescription",
+            "ProductURL",
+          ],
         },
         name: "ShopifyProducts",
         items: normalizedItems,
