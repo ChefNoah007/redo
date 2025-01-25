@@ -54,20 +54,20 @@ export const action = async ({ request }) => {
     ProductID: product.id.toString(),
     ProductName: product.title || "",
     ProductDescription: product.body_html
-      .replace(/<[^>]*>/g, "") // HTML-Tags entfernen
-      .replace(/[\r\n\t]+/g, " ") // Neue Zeilen und Tabs entfernen
-      .trim(),
-    ProductURL: `https://${shopDomain}/products/${product.handle}`, // Produkt-URL
-    ImageURL: product.images?.[0]?.src || "No Image Available", // Erstes Bild
-    Tags: product.tags?.split(",") || [], // Tags
+      ? product.body_html.replace(/<[^>]*>/g, "").replace(/[\r\n\t]+/g, " ").trim()
+      : "No description available.",
+    ProductURL: `https://${shopDomain}/products/${product.handle}`,
+    ImageURL: product.images?.[0]?.src || "No Image Available",
+    Tags: product.tags?.split(",") || [],
     Variants: product.variants.map((variant) => ({
       VariantID: variant.id.toString(),
       Title: variant.title || "Default",
-      Price: variant.price || "N/A",
+      Price: variant.price || "N/A", // Setze "N/A" als Standardpreis
       InventoryQuantity: variant.inventory_quantity || 0,
       SKU: variant.sku || "No SKU",
       Weight: variant.weight || "N/A",
-    })), // Varianten-Details
+    })),
+    ProductPrice: product.variants?.[0]?.price || "N/A", // "N/A" für fehlende Preise
   }));
 
 
@@ -80,7 +80,12 @@ export const action = async ({ request }) => {
     const voiceflowData = {
       data: {
         schema: {
-          searchableFields: ["ProductName", "ProductID", "ProductPrice", "ProductDescription"],
+          searchableFields: [
+            "ProductName",
+            "ProductID",
+            "ProductPrice", // Muss bei allen Produkten vorhanden sein
+            "ProductDescription",
+          ],
           metadataFields: ["ProductID", "ProductPrice", "ProductDescription"],
         },
         name: "ShopifyProducts",
