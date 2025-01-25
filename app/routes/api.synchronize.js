@@ -38,14 +38,15 @@ export const action = async ({ request }) => {
         path: "products",
         query: {
           limit: 250,
+          published_status: "published", // Nur aktive Produkte
           ...(nextPageCursor ? { page_info: nextPageCursor } : {}),
         },
       });
-
+    
       allProducts = [...allProducts, ...body.products];
       nextPageCursor = pageInfo?.nextPage?.query.page_info;
       hasNextPage = Boolean(nextPageCursor);
-    }
+    }    
 
     const normalizedItems = allProducts.map((product) => ({
       ProductID: product.id.toString(),
