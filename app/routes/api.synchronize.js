@@ -15,7 +15,6 @@ const shopify = shopifyApi({
 
 export const action = async ({ request }) => {
   try {
-    // Parse request body for overwrite flag
     const body = await request.json();
     const overwrite = body.overwrite === true;
 
@@ -38,7 +37,7 @@ export const action = async ({ request }) => {
         path: "products",
         query: {
           limit: 250,
-          status: "active", // Only fetch active products
+          status: "active", // Nur aktive Produkte abfragen
           ...(nextPageCursor ? { page_info: nextPageCursor } : {}),
         },
       });
@@ -52,24 +51,20 @@ export const action = async ({ request }) => {
     const removeNewlinesRegex = /[\r\n\t]+/g;
 
     const normalizedItems = allProducts.map((product) => {
-      const productURL = `https://${shopDomain}/products/${product.handle}`;
-      let desc = product.body_html || "";
-      desc = desc.replace(removeHtmlRegex, "").replace(removeNewlinesRegex, " ").trim();
+      const description = (product.body_html || "")
+        .replace(removeHtmlRegex, "")
+        .replace(removeNewlinesRegex, " ")
+        .trim();
 
-      let summary = desc.substring(0, 200).trim();
-      if (desc.length > 200) {
-        summary += "...";
-      }
-
-      const price = product.variants?.[0]?.price ?? "N/A";
+      const summary = description.split(". ").slice(0, 2).join(". ") + "."; // Erste zwei Sätze
 
       return {
+        ProductName: product.title || "N/A",
         ProductID: product.id.toString(),
-        ProductName: product.title || "",
-        ProductPrice: `${price} €`,
-        ProductDescription: desc,
-        ProductURL: productURL,
+        ProductPrice: product.variants?.[0]?.price ? `${product.variants[0].price} €` : "N/A",
+        ProductDescription: description,
         Summary: summary,
+        ProductURL: `https://${shopDomain}/products/${product.handle || ""}`,
       };
     });
 
@@ -81,20 +76,8 @@ export const action = async ({ request }) => {
     const voiceflowData = {
       data: {
         schema: {
-          searchableFields: [
-            "ProductName",
-            "ProductID",
-            "ProductPrice",
-            "ProductDescription",
-            "Summary",
-          ],
-          metadataFields: [
-            "ProductID",
-            "ProductPrice",
-            "ProductDescription",
-            "ProductURL",
-            "Summary",
-          ],
+          searchableFields: ["ProductName", "ProductID", "ProductPrice", "ProductDescription"],
+          metadataFields: ["ProductID", "ProductPrice", "ProductDescription", "ProductURL", "Summary"],
         },
         name: "ShopifyProducts",
         items: normalizedItems,
