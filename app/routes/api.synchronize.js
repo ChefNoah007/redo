@@ -48,7 +48,7 @@ export const action = async ({ request }) => {
       hasNextPage = Boolean(nextPageCursor);
     }
 
-    const normalizedItems = allProducts.map((product) => {
+    const normalizedItems = allProducts.flatMap((product) => {
       // Beschreibung und Titel säubern
       const removeHtmlRegex = /<[^>]*>?/gm;
       const removeNewlinesRegex = /[\r\n\t]+/g;
@@ -59,19 +59,18 @@ export const action = async ({ request }) => {
       let name = product.title || "";
       name = name.replace(removeNewlinesRegex, " ").trim();
 
-      // Standardpreis setzen, falls keiner vorhanden ist
-      const price = product.variants?.[0]?.price ?? "N/A";
-
       // Produkt-URL generieren
       const productUrl = product.online_store_url || `https://${shopDomain}/products/${product.handle}`;
 
-      return {
+      // Varianten erstellen
+      const variants = product.variants || [];
+      return variants.map((variant) => ({
         ProductID: product.id.toString(),
-        ProductName: name,
-        ProductPrice: price,
+        ProductName: `${name} - ${variant.title}`.trim(),
+        ProductPrice: variant.price ? `${variant.price} €` : "N/A",
         ProductDescription: desc,
-        ProductURL: productUrl, // URL hinzufügen
-      };
+        ProductURL: productUrl,
+      }));
     });
 
     // Voiceflow URL mit optionalem `overwrite`
