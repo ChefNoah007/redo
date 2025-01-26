@@ -36,13 +36,11 @@ export const action = async ({ request }) => {
       const { body, pageInfo } = await shopifyAPI.get({
         path: "products",
         query: {
+          limit: 250,
           status: "active", // Nur aktive Produkte
           ...(nextPageCursor ? { page_info: nextPageCursor } : {}),
         },
       });
-
-      // Debugging: Logge die vollständige API-Antwort für ein Produkt
-      console.log("Shopify API Product Response:", JSON.stringify(body.products[0], null, 2));
 
       allProducts = [...allProducts, ...body.products];
       nextPageCursor = pageInfo?.nextPage?.query.page_info;
@@ -53,19 +51,27 @@ export const action = async ({ request }) => {
       const removeHtmlRegex = /<[^>]*>?/gm;
       const removeNewlinesRegex = /[\r\n\t]+/g;
 
+      // Beschreibung und Titel säubern
       let desc = product.body_html || "";
       desc = desc.replace(removeHtmlRegex, "").replace(removeNewlinesRegex, " ").trim();
 
       let name = product.title || "";
       name = name.replace(removeNewlinesRegex, " ").trim();
 
+      // Produkt-URL generieren
       const productUrl = product.online_store_url || `https://${shopDomain}/products/${product.handle}`;
 
+      // Varianten formatieren
       const variants = product.variants.map((variant) => {
         return `${variant.title || "Default"}: ${variant.price ? `${variant.price} €` : "N/A"}`;
       });
-
       const formattedVariants = variants.join(" | ");
+
+      // Bilder extrahieren
+      const images = product.images.map((img) => img.src);
+
+      // Tags formatieren
+      const tags = product.tags ? product.tags.split(",").map((tag) => tag.trim()) : [];
 
       return {
         ProductID: product.id.toString(),
@@ -74,9 +80,12 @@ export const action = async ({ request }) => {
         ProductDescription: desc,
         ProductURL: productUrl,
         ProductVariants: formattedVariants,
+        ProductTags: tags.join(", "), // Tags als String
+        ProductImages: images.join(", "), // Bilder als String
       };
     });
 
+    // Voiceflow URL mit optionalem `overwrite`
     let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload/table";
     if (overwrite) {
       voiceflowUrl += "?overwrite=true";
@@ -92,6 +101,8 @@ export const action = async ({ request }) => {
             "ProductDescription",
             "ProductURL",
             "ProductVariants",
+            "ProductTags",
+            "ProductImages",
           ],
           metadataFields: [
             "ProductName",
@@ -100,6 +111,8 @@ export const action = async ({ request }) => {
             "ProductDescription",
             "ProductURL",
             "ProductVariants",
+            "ProductTags",
+            "ProductImages",
           ],
         },
         name: "ShopifyProducts",
