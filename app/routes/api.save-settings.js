@@ -18,63 +18,75 @@ export async function action({ request }) {
     throw new Response("Method Not Allowed", { status: 405 });
   }
   
-  const { settings } = await request.json();
-  const value = JSON.stringify(settings);
-  
-  const shopDomain = "coffee-principles.myshopify.com";
-  const offlineSessionId = shopify.session.getOfflineId(shopDomain);
-  // Verwende hier ebenfalls shopify.config.sessionStorage.loadSession
-  const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
-  if (!session) {
-    return json({ success: false, error: `No offline session found for shop ${shopDomain}` }, { status: 500 });
-  }
-  
-  const client = new shopify.clients.Rest({ session });
-  
-  // Prüfe, ob das Metafield bereits existiert
-  const getResponse = await client.get({
-    path: "metafields",
-    query: {
-      namespace: "ai_agents_einstellungen",
-      key: "global"
+  try {
+    const { settings } = await request.json();
+    const value = JSON.stringify(settings);
+    
+    const shopDomain = "coffee-principles.myshopify.com";
+    const offlineSessionId = shopify.session.getOfflineId(shopDomain);
+    const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
+    if (!session) {
+      console.error(`No offline session found for shop ${shopDomain}`);
+      return json({ success: false, error: `No offline session found for shop ${shopDomain}` }, { status: 500 });
     }
-  });
-  let metafieldId = null;
-  if (getResponse.body.metafields && getResponse.body.metafields.length > 0) {
-    metafieldId = getResponse.body.metafields[0].id;
-  }
-  
-  let updateResponse;
-  if (metafieldId) {
-    updateResponse = await client.put({
-      path: `metafields/${metafieldId}`,
-      data: {
-        metafield: {
-          id: metafieldId,
-          value: value,
-          type: "json_string"
-        }
-      },
-      type: "application/json"
-    });
-  } else {
-    updateResponse = await client.post({
+    
+    const client = new shopify.clients.Rest({ session });
+    
+    // Prüfe, ob das Metafield bereits existiert
+    const getResponse = await client.get({
       path: "metafields",
-      data: {
-        metafield: {
-          namespace: "ai_agents_einstellungen",
-          key: "global",
-          value: value,
-          type: "json_string"
-        }
-      },
-      type: "application/json"
+      query: {
+        namespace: "ai_agents_einstellungen",
+        key: "global"
+      }
     });
-  }
-  
-  if (updateResponse.body && updateResponse.status === 200) {
-    return json({ success: true, data: updateResponse.body });
-  } else {
-    return json({ success: false, error: updateResponse.body }, { status: 500 });
+    console.log("GET Metafield Response:", getResponse.body);
+    
+    let metafieldId = null;
+    if (getResponse.body.metafields && getResponse.body.metafields.length > 0) {
+      metafieldId = getResponse.body.metafields[0].id;
+    }
+    
+    let updateResponse;
+    if (metafieldId) {
+      // Aktualisiere das vorhandene Metafield per PUT
+      updateResponse = await client.put({
+        path: `metafields/${metafieldId}`,
+        data: {
+          metafield: {
+            id: metafieldId,
+            value: value,
+            type: "json_string"
+          }
+        },
+        type: "application/json"
+      });
+    } else {
+      // Erstelle ein neues Metafield per POST
+      updateResponse = await client.post({
+        path: "metafields",
+        data: {
+          metafield: {
+            namespace: "ai_agents_einstellungen",
+            key: "global",
+            value: value,
+            type: "json_string"
+          }
+        },
+        type: "application/json"
+      });
+    }
+    
+    console.log("Update Response Status:", updateResponse.status);
+    console.log("Update Response Body:", updateResponse.body);
+    
+    if (updateResponse.body && updateResponse.status === 200) {
+      return json({ success: true, data: updateResponse.body });
+    } else {
+      return json({ success: false, error: updateResponse.body }, { status: 500 });
+    }
+  } catch (error) {
+    console.error("Error in save-settings action:", error);
+    return json({ success: false, error: error.message }, { status: 500 });
   }
 }
