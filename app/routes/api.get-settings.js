@@ -1,38 +1,52 @@
 // app/routes/api.get-settings.jsx
 import { json } from '@remix-run/node';
+import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
 
-const shop = process.env.SHOPIFY_SHOP_DOMAIN;
-const accessToken = process.env.SHOPIFY_ACCESS_TOKEN;
+// Konfiguration wie in deinem anderen Code
+const shopify = shopifyApi({
+  apiKey: process.env.SHOPIFY_API_KEY,
+  apiSecretKey: process.env.SHOPIFY_API_SECRET,
+  scopes: process.env.SCOPES.split(","),
+  hostName: process.env.SHOPIFY_APP_URL,
+  apiVersion: LATEST_API_VERSION,
+  isEmbeddedApp: true,
+  // Session-Storage, z. B. mit Prisma
+  sessionStorage: /* deine SessionStorage-Instanz */
+});
 
 export async function loader({ request }) {
-  // Rufe das Metafield über die Shopify Admin API ab.
-  const response = await fetch(`https://${shop}/admin/api/2025-01/metafields.json?namespace=ai_agents_einstellungen&key=global`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': accessToken
+  const shopDomain = "coffee-principles.myshopify.com";
+  const offlineSessionId = shopify.session.getOfflineId(shopDomain);
+  const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
+  if (!session) {
+    return json({ success: false, error: `No offline session found for shop ${shopDomain}` }, { status: 500 });
+  }
+  
+  // Erstelle den REST-Client
+  const client = new shopify.clients.Rest({ session });
+  
+  // Rufe das Metafield ab
+  const response = await client.get({
+    path: "metafields",
+    query: {
+      namespace: "ai_agents_einstellungen",
+      key: "global"
     }
   });
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    return json({ success: false, error: result }, { status: 500 });
-  }
-
-  // Je nach API-Antwort musst du den Wert des Metafields extrahieren.
-  // Im Beispiel nehmen wir an, dass result.metafields ein Array ist und wir das erste Element nutzen:
-  const metafield = result.metafields && result.metafields[0];
+  
+  const metafields = response.body.metafields;
   let settings = null;
-  if (metafield && metafield.value) {
+  if (metafields && metafields.length > 0) {
+    const metafield = metafields[0];
     try {
       settings = JSON.parse(metafield.value);
-    } catch (err) {
+    } catch (error) {
       settings = null;
     }
   }
   
-  // Wenn kein Metafield vorhanden ist, kannst du Standardwerte zurückgeben.
   if (!settings) {
+    // Fallback-Standardwerte
     settings = {
       hide_on_desktop: false,
       hide_on_mobile: false,
@@ -49,6 +63,6 @@ export async function loader({ request }) {
       input_button_radius: 0
     };
   }
-
+  
   return json({ success: true, settings });
 }

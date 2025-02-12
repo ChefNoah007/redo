@@ -1,73 +1,82 @@
 // app/routes/api.save-settings.jsx
 import { json } from '@remix-run/node';
+import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
 
-const shop = process.env.SHOPIFY_SHOP_DOMAIN;
-const accessToken = process.env.SHOPIFY_ACCESS_TOKEN;
-const apiVersion = "2025-01"; // Passe dies an die gewünschte Version an
+const shopify = shopifyApi({
+  apiKey: process.env.SHOPIFY_API_KEY,
+  apiSecretKey: process.env.SHOPIFY_API_SECRET,
+  scopes: process.env.SCOPES.split(","),
+  hostName: process.env.SHOPIFY_APP_URL,
+  apiVersion: LATEST_API_VERSION,
+  isEmbeddedApp: true,
+  sessionStorage: /* deine SessionStorage-Instanz */
+});
 
 export async function action({ request }) {
   if (request.method !== 'POST') {
     throw new Response("Method Not Allowed", { status: 405 });
   }
-
+  
   const { settings } = await request.json();
   const value = JSON.stringify(settings);
-
-  // Zuerst: Prüfe, ob bereits ein Metafield vorhanden ist
-  const getResponse = await fetch(`https://${shop}/admin/api/${apiVersion}/metafields.json?namespace=ai_agents_einstellungen&key=global`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': accessToken
+  
+  const shopDomain = "coffee-principles.myshopify.com";
+  const offlineSessionId = shopify.session.getOfflineId(shopDomain);
+  const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
+  if (!session) {
+    return json({ success: false, error: `No offline session found for shop ${shopDomain}` }, { status: 500 });
+  }
+  
+  const client = new shopify.clients.Rest({ session });
+  
+  // Prüfe, ob das Metafield bereits existiert
+  const getResponse = await client.get({
+    path: "metafields",
+    query: {
+      namespace: "ai_agents_einstellungen",
+      key: "global"
     }
   });
-  const getResult = await getResponse.json();
-
+  
   let metafieldId = null;
-  if (getResult.metafields && getResult.metafields.length > 0) {
-    metafieldId = getResult.metafields[0].id;
+  const metafields = getResponse.body.metafields;
+  if (metafields && metafields.length > 0) {
+    metafieldId = metafields[0].id;
   }
-
+  
   let updateResponse;
   if (metafieldId) {
-    // Metafield existiert – aktualisiere es mit PUT
-    updateResponse = await fetch(`https://${shop}/admin/api/${apiVersion}/metafields/${metafieldId}.json`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': accessToken
-      },
-      body: JSON.stringify({
+    // Aktualisiere das existierende Metafield per PUT
+    updateResponse = await client.put({
+      path: `metafields/${metafieldId}`,
+      data: {
         metafield: {
           id: metafieldId,
           value: value,
-          type: "json_string" // oder den entsprechenden Typ, je nach deiner Definition
+          type: "json_string"
         }
-      })
+      },
+      type: "application/json"
     });
   } else {
-    // Metafield existiert nicht – erstelle es per POST
-    updateResponse = await fetch(`https://${shop}/admin/api/${apiVersion}/metafields.json`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': accessToken
-      },
-      body: JSON.stringify({
+    // Erstelle ein neues Metafield per POST
+    updateResponse = await client.post({
+      path: "metafields",
+      data: {
         metafield: {
           namespace: "ai_agents_einstellungen",
           key: "global",
           value: value,
-          type: "json_string" // Passe den Typ an, falls erforderlich
+          type: "json_string"
         }
-      })
+      },
+      type: "application/json"
     });
   }
-
-  const updateResult = await updateResponse.json();
-
-  if (updateResponse.ok) {
-    return json({ success: true, data: updateResult });
+  
+  if (updateResponse.body && updateResponse.status === 200) {
+    return json({ success: true, data: updateResponse.body });
   } else {
-    return json({ success: false, error: updateResult }, { status: 500 });
+    return json({ success: false, error: updateResponse.body }, { status: 500 });
   }
 }
