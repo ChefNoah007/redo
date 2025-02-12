@@ -1,9 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextApiRequest, NextApiResponse } from 'next';
 
 // Hier würdest du normalerweise die Shopify Admin API aufrufen, um das Metafield abzurufen.
 // Für den Anfang geben wir einen Beispiel-Datensatz zurück.
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default function handler(req, res) {
   res.status(200).json({
     success: true,
     settings: {

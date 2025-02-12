@@ -1,10 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextApiRequest, NextApiResponse } from 'next';
 
 // In einer echten Implementierung würdest du hier die Daten an Shopify senden,
 // um das Metafield (oder die einzelnen Metafields) zu aktualisieren.
 // Dieser Beispielcode simuliert nur eine erfolgreiche Speicherung.
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default function handler(req, res) {
   if (req.method === 'POST') {
     const { settings } = req.body;
     // Hier solltest du die Shopify Admin API aufrufen, um das Metafield zu aktualisieren.
