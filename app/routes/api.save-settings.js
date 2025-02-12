@@ -23,14 +23,15 @@ export async function action({ request }) {
   
   const shopDomain = "coffee-principles.myshopify.com";
   const offlineSessionId = shopify.session.getOfflineId(shopDomain);
-  const session = await shopify.sessionStorage.loadSession(offlineSessionId);
+  // Verwende hier ebenfalls shopify.config.sessionStorage.loadSession
+  const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
   if (!session) {
     return json({ success: false, error: `No offline session found for shop ${shopDomain}` }, { status: 500 });
   }
   
   const client = new shopify.clients.Rest({ session });
   
-  // Zuerst prüfen, ob das Metafield bereits existiert
+  // Prüfe, ob das Metafield bereits existiert
   const getResponse = await client.get({
     path: "metafields",
     query: {
@@ -45,7 +46,6 @@ export async function action({ request }) {
   
   let updateResponse;
   if (metafieldId) {
-    // Aktualisiere das vorhandene Metafield per PUT
     updateResponse = await client.put({
       path: `metafields/${metafieldId}`,
       data: {
@@ -58,7 +58,6 @@ export async function action({ request }) {
       type: "application/json"
     });
   } else {
-    // Erstelle ein neues Metafield per POST
     updateResponse = await client.post({
       path: "metafields",
       data: {
