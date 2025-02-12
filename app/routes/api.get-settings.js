@@ -11,7 +11,7 @@ const shopify = shopifyApi({
   apiVersion: LATEST_API_VERSION,
   isEmbeddedApp: true,
   // Session-Storage, z. B. mit Prisma
-  sessionStorage: /* deine SessionStorage-Instanz */
+  sessionStorage: {}, // Replace with your SessionStorage instance if available
 });
 
 export async function loader({ request }) {

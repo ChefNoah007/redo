@@ -9,7 +9,7 @@ const shopify = shopifyApi({
   hostName: process.env.SHOPIFY_APP_URL,
   apiVersion: LATEST_API_VERSION,
   isEmbeddedApp: true,
-  sessionStorage: /* deine SessionStorage-Instanz */
+  sessionStorage: undefined
 });
 
 export async function action({ request }) {
