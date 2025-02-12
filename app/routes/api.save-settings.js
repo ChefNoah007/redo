@@ -32,7 +32,7 @@ export async function action({ request }) {
   
     const client = new shopify.clients.Rest({ session });
   
-    // Zuerst prüfen, ob das Metafield bereits existiert
+    // Prüfe, ob das Metafield bereits existiert
     const getResponse = await client.get({
       path: "metafields",
       query: {
@@ -40,6 +40,7 @@ export async function action({ request }) {
         key: "global"
       }
     });
+    console.log("GET Metafield Response:", getResponse.body);
     let metafieldId = null;
     if (getResponse.body.metafields && getResponse.body.metafields.length > 0) {
       metafieldId = getResponse.body.metafields[0].id;
@@ -75,10 +76,10 @@ export async function action({ request }) {
       });
     }
   
-    console.log("Update Response Status:", updateResponse.response.statusCode);
     console.log("Update Response Body:", updateResponse.body);
-  
-    if (updateResponse.body && updateResponse.response.statusCode === 200) {
+    
+    // Prüfe, ob updateResponse.body.metafield vorhanden ist
+    if (updateResponse.body && updateResponse.body.metafield) {
       return json({ success: true, data: updateResponse.body });
     } else {
       return json({ success: false, error: updateResponse.body }, { status: 500 });
