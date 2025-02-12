@@ -18,36 +18,43 @@
         color: {{ bot_text_colour }};
     }
 
-    #chat-send-button-mobile{
-        background-color: {{ user_background_colour }} !important;
-        color: {{ user_text_colour }} !important;
-        border: 1px solid {{ user_background_colour }} !important;
-        padding: 10px 10px 8px 10px!important;
-        border-radius: 25px!important;        
+    #chat-send-button-mobile {
+        background-color: {{ user_background_colour }};
+        color: {{ user_text_colour }};
+        border: 1px solid {{ bot_background_colour }} !important;
+        padding: 10px 10px 8px 10px !important;
+        border-radius: 25px !important;
     }
 
-    #chat-send-button img{
+    #chat-send-button img {
         width: 20px;
         height: 20px;
     }
 
-    .vf-message-button{
-        background-color: {{ user_background_colour }};
-        color: {{ user_text_colour }};
-        border: 1px {{ user_background_colour }};
-    }
+    .vf-message-button {
+    background-color: {{ user_text_colour }};
+    color: {{ user_background_colour }};
+    border: 0px solid {{ user_background_colour }};
+}
 
-    .vf-send-button-icon{
+
+    .vf-send-button-icon {
         stroke: {{ user_text_colour }};
     }
 
-    /* Add any additional styles for the chatbox and messages here */
-    .AIchatbot {
+    /* Chatbox & Nachrichten – zusätzliche Styles */
+    .AIchatbot_mobile {
         position: relative;
     }
 
+    @media (min-width: 765px) {
+        .AIchatbot_mobile {
+            display: none;
+        }
+    }
+
+    /* Chatbox: standardmäßig versteckt mit sanfter Transition */
     #chat-box-mob {
-        display: none;
         position: fixed;
         bottom: 0;
         left: 0;
@@ -58,14 +65,25 @@
         border-top-left-radius: 15px;
         box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
         z-index: 9999;
+
+        opacity: 0;
+        transform: translateY(100%);
+        visibility: hidden;
+        transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s;
+    }
+    /* Sichtbar: Chatbox einblenden */
+    #chat-box-mob.active {
+        opacity: 1;
+        transform: translateY(0);
+        visibility: visible;
     }
 
+    /* Toggle-Button */
     .toggle-button {
         position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
-        /* background-color: {{ user_background_colour }}; */
         background-color: #f7fbff;
         color: {{ user_text_colour }};
         border: 0;
@@ -73,33 +91,33 @@
         padding: 8px 10px 5px 9px;
         border-radius: 0;
         cursor: pointer;
-        z-index: 999999; 
+        z-index: 999999;
         transition: transform 0.3s ease;
     }
     
-    .toggle-button img{
-        transition: transform 0.3s ease;
-    }
-
-    .arrow {
-        transform: rotate(0deg);
+    /* Hier packen wir den Pfeil in einen Container, der den Bounce-Effekt hat */
+    .arrow-container {
+        display: inline-block;
+        /* Bounce-Animation */
         animation: upDown 2s infinite ease-in-out;
-    }    
-
+    }
     @keyframes upDown {
         0%, 100% {
-            transform: translateY(0) rotate(0deg);
+            transform: translateY(0);
         }
         50% {
-            transform: translateY(-5px) rotate(0deg);
+            transform: translateY(-5px);
         }
     }
 
-    .rotated {
-        transform: rotate(180deg);
+    /* Das eigentliche Bild – hier regeln wir die Rotation */
+    .arrow {
         transition: transform 0.3s ease;
-    }  
-    
+    }
+    .arrow.rotated {
+        transform: rotate(180deg);
+    }
+
     #toggleChat-Input {
         display: block;
         text-align: center;
@@ -110,64 +128,43 @@
         margin: 0 0 4px;
     }
 
-    #chat-box{
-        margin-bottom: 20px;
-    }
-
-    .toggle-button input{
-        border-radius: 25px;
-        box-shadow: none;
-        outline: none;
-        border: 1px solid #000;
-        margin: 12px 0 8px;
-        width: 100%;
-        padding: 10px 16px;
-    }
-
-    /* Hide toggle button and chatbox on larger screens */
+    /* Responsive-Anpassungen */
     @media (min-width: 768px) {
         .toggle-button {
             display: none;
         }
-        #chat-container{
-            margin-top: -75px;
-        }
         #chat-box-mob {
-            display: block; 
+            display: block;
             position: static;
             box-shadow: none;
             max-height: initial !important;
+            opacity: 1;
+            transform: none;
+            visibility: visible;
         }
-        .chat-box-mob h2{
+        .chat-box-mob h2 {
             display: none;
         }
     }
     @media (max-width: 767px) {
-        #chat-all-button-container{
-            display: none!important;
-        }
-        .chat-box-mob h2{
+        .chat-box-mob h2 {
             text-align: center;
         }
-        .vf-message{
-            font-size: 16px!important;
+        .vf-message {
+            font-size: 16px !important;
             line-height: 20px;
-            border-radius: 8px!important;
-        }
-        #chat-text-input-container{
-            margin-bottom: 12px;
-        }
-        #chat-send-button{
-            width: 20%!important;
-            padding: 10px 10px 5px 10px !important;
+            border-radius: 8px !important;
         }
     }
 </style>
 
-<div class="AIchatbot">
+<div class="AIchatbot_mobile">
     <button id="toggle-chat" class="toggle-button">
-        <img src="https://cdn.shopify.com/s/files/1/0919/8511/7522/files/upload.png?v=1736018015" class="arrow" height="16" width="16" loading="lazy">
-        <div id="toggleChat-Input">✨ Erfahre mehr mit KI ✨</div>
+        <!-- Pfeil-Container mit Bounce-Animation -->
+        <div class="arrow-container">
+            <img src="https://cdn.shopify.com/s/files/1/0919/8511/7522/files/upload.png?v=1736018015" class="arrow" height="16" width="16" loading="lazy">
+        </div>
+        <div id="toggleChat-Input">{{ block.settings.chat_heading_mobile }}</div>
     </button>    
     
     <div id="chat-box-mob" class="chat-box-mob">
@@ -177,46 +174,75 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const toggleButton = document.getElementById('toggle-chat');
-        const chatBox = document.getElementById('chat-box-mob');
+document.addEventListener("DOMContentLoaded", function () {
+    // Elemente selektieren
+    const toggleChatButton = document.getElementById("toggle-chat");
+    const chatBox = document.getElementById("chat-box-mob");
+    const arrowImg = toggleChatButton.querySelector(".arrow");
+    const toggleChatInput = document.getElementById("toggleChat-Input");
 
-        // Function to toggle chatbox visibility
-        function toggleChatBox() {
-            if (window.innerWidth < 768) { // Only toggle on mobile view
-                if (chatBox.style.display === 'none' || chatBox.style.display === '') {
-                    chatBox.style.display = 'block';
-                } else {
-                    chatBox.style.display = 'none';
-                }
+    // Funktion, um den Chat-Zustand (und den Button) konsistent zu setzen
+    function setChatOpen(isOpen) {
+        if (isOpen) {
+            chatBox.classList.add("active");
+            arrowImg.classList.add("rotated");
+            // Hinweistext ausblenden, wenn der Chat offen ist
+            toggleChatInput.style.display = "none";
+        } else {
+            chatBox.classList.remove("active");
+            arrowImg.classList.remove("rotated");
+            // Hinweistext anzeigen, wenn der Chat geschlossen ist
+            toggleChatInput.style.display = "block";
+        }
+    }
+
+    // Beim Klick auf den Toggle-Button: Zustand umschalten
+    toggleChatButton.addEventListener("click", function() {
+        if (chatBox.classList.contains("active")) {
+            setChatOpen(false);
+        } else {
+            setChatOpen(true);
+        }
+    });
+
+    // Werte aus den Schema-Einstellungen (Sekunden und Minuten) umrechnen
+    const autoOpenDelay = parseInt({{ block.settings.auto_open_delay | json }}) * 1000;
+    const autoOpenCooldown = parseInt({{ block.settings.auto_open_cooldown | json }}) * 60000;
+
+    // Funktionen zum Speichern und Auslesen der letzten Auto-Öffnung in localStorage
+    function getLastAutoOpenTime() {
+         return parseInt(localStorage.getItem('chat_last_auto_open')) || 0;
+    }
+    function setLastAutoOpenTime(time) {
+         localStorage.setItem('chat_last_auto_open', time);
+    }
+
+    // Funktion, die versucht, den Chat automatisch zu öffnen
+    function attemptAutoOpen() {
+        if (window.innerWidth < 768 && !chatBox.classList.contains("active")) {
+            const now = Date.now();
+            const lastAutoOpenTime = getLastAutoOpenTime();
+            if (now - lastAutoOpenTime >= autoOpenCooldown) {
+                setChatOpen(true);
+                setLastAutoOpenTime(now);
             }
         }
-        toggleButton.addEventListener('click', toggleChatBox);
-    });
+    }
 
-    document.addEventListener("DOMContentLoaded", function () {
-        const toggleChatButton = document.getElementById("toggle-chat");
-        toggleChatButton.addEventListener("click", function () {
-            const img = this.querySelector("img");
-            if (img) {
-                img.classList.toggle("rotated");
+    // Initiales automatisches Öffnen nach der eingestellten Verzögerung
+    setTimeout(attemptAutoOpen, autoOpenDelay);
+
+    // Wenn der Nutzer den Chat manuell schließt, wird nach Ablauf des Cooldowns erneut versucht, ihn automatisch zu öffnen
+    toggleChatButton.addEventListener("click", function() {
+        setTimeout(function() {
+            if (!chatBox.classList.contains("active")) {
+                setTimeout(attemptAutoOpen, autoOpenCooldown);
             }
-        });
+        }, 200);
     });
-
-    document.addEventListener("DOMContentLoaded", function () {
-        const toggleChatButton = document.getElementById("toggle-chat");
-        const toggleChatInput = document.getElementById("toggleChat-Input");
-
-        toggleChatButton.addEventListener("click", function () {
-            if (toggleChatInput.style.display === "block" || !toggleChatInput.style.display) {
-                toggleChatInput.style.display = "none"; 
-            } else {
-                toggleChatInput.style.display = "block"; 
-            }
-        });
-    });
+});
 </script>
+
 
 {% schema %}
 {
@@ -224,14 +250,17 @@
     "target": "section",
     "settings": [
         { "type": "product", "id": "product", "label": "Product Discussed", "autofill": true },
-        { "type": "text", "id": "page_slug", "label": "Page Handling Slug", "default": "none"},
-        { "type": "color", "id": "bot_background_colour", "label": "Bot Message Colour", "default": "#F3F3F3"},
-        { "type": "color", "id": "bot_text_colour", "label": "Bot Text Colour", "default": "#000000" },
-        { "type": "color", "id": "user_background_colour", "label": "User Message Colour", "default": "#F6C801" },
-        { "type": "color", "id": "user_text_colour", "label": "User Text Colour", "default": "#ffffff" },
-        { "type": "textarea", "id": "chat_heading", "label": "Chat Heading", "default": "✨ Erfahre mehr mit KI ✨" },
+        { "type": "text", "id": "page_slug", "label": "Page Handling Slug", "default": "none" },
+        { "type": "color", "id": "bot_background_colour", "label": "Bot Message Colour", "default": "#F1F2F2" },
+        { "type": "color", "id": "bot_text_colour", "label": "Bot Text Colour", "default": "#1A1E23" },
+        { "type": "color", "id": "user_background_colour", "label": "User Message Colour", "default": "#FECF02" },
+        { "type": "color", "id": "user_text_colour", "label": "User Text Colour", "default": "#FFFAE5" },
+        { "type": "textarea", "id": "chat_heading", "label": "Chat Heading", "default": "Beanie (Online)" },
+        { "type": "textarea", "id": "chat_heading_mobile", "label": "Chat Heading (Mobile)", "default": "Live Chat" },
         { "type": "text", "id": "send_label", "label": "Send Button Label", "default": "Abschicken" },
-        { "type": "text", "id": "type_here_label", "label": "Type Box Placeholder", "default": "Tippe dein Anliegen ein ..."}
+        { "type": "text", "id": "type_here_label", "label": "Type Box Placeholder", "default": "Tippe dein Anliegen ein ..." },
+        { "type": "number", "id": "auto_open_delay", "label": "Automatisch öffnen nach (Sekunden)", "default": 3 },
+        { "type": "number", "id": "auto_open_cooldown", "label": "Erneutes automatisches Öffnen nach (Minuten)", "default": 10 }
     ]
 }
 {% endschema %}

@@ -1,0 +1,159 @@
+<div id="voiceflow-chat" style="display: block;"></div>
+
+<script type="text/javascript">
+  (function(d, t) {
+      var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
+      v.onload = function() {
+        window.voiceflow.chat.load({
+          verify: { projectID: '6703af9afcd0ea507e9c5369' },
+          url: 'https://general-runtime.voiceflow.com',
+          versionID: 'production'
+        }).then(() => {
+
+          // Funktion, um zu überprüfen, ob der Chat wieder automatisch geöffnet werden darf
+          function canAutoOpenChat() {
+            const lastOpenTime = localStorage.getItem('chatLastOpened');
+            if (!lastOpenTime) return true; // Falls kein Eintrag existiert, öffnen
+
+            const now = new Date().getTime();
+            const elapsedTime = (now - lastOpenTime) / (1000 * 60); // Zeit in Minuten
+            return elapsedTime >= {{ block.settings.auto_open_cooldown }};
+          }
+
+          // Chat automatisch öffnen nach einer bestimmten Zeit, wenn er nicht kürzlich geöffnet wurde
+          if ({{ block.settings.auto_open_delay }} > 0 && canAutoOpenChat()) {
+            setTimeout(() => {
+              window.voiceflow.chat.open();
+              localStorage.setItem('chatLastOpened', new Date().getTime()); // Speichert den Zeitstempel
+            }, {{ block.settings.auto_open_delay }} * 1000);
+          }
+
+          // Proaktive Nachrichten Array vorbereiten
+          const proactiveMessages = [];
+
+          {% if block.settings.proactive_message_1 != blank %}
+            proactiveMessages.push("{{ block.settings.proactive_message_1 }}");
+          {% endif %}
+          {% if block.settings.proactive_message_2 != blank %}
+            proactiveMessages.push("{{ block.settings.proactive_message_2 }}");
+          {% endif %}
+          {% if block.settings.proactive_message_3 != blank %}
+            proactiveMessages.push("{{ block.settings.proactive_message_3 }}");
+          {% endif %}
+          {% if block.settings.proactive_message_4 != blank and block.settings.proactive_message_4 != " " %}
+            proactiveMessages.push("{{ block.settings.proactive_message_4 }}");
+          {% endif %}
+          {% if block.settings.proactive_message_5 != blank and block.settings.proactive_message_5 != " " %}
+            proactiveMessages.push("{{ block.settings.proactive_message_5 }}");
+          {% endif %}
+
+          let messageIndex = 0;
+
+          function sendProactiveMessage() {
+            if (messageIndex < proactiveMessages.length) {
+              window.voiceflow.chat.proactive.push({
+                type: 'text',
+                payload: { message: proactiveMessages[messageIndex] }
+              });
+
+              messageIndex++;
+              setTimeout(sendProactiveMessage, {{ block.settings.proactive_message_interval }} * 1000);
+            }
+          }
+
+          // Erste Nachricht verzögert starten
+          setTimeout(sendProactiveMessage, {{ block.settings.proactive_message_start_delay }} * 1000);
+        });
+      }
+      v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs"; 
+      v.type = "text/javascript"; 
+      s.parentNode.insertBefore(v, s);
+  })(document, 'script');
+</script>
+
+<style>
+  /* Kontrolliert das Anzeigen des Voiceflow-Chats auf mobilen Geräten */
+  {% if block.settings.hide_on_mobile == true %}
+  @media (max-width: 765px) {
+      #voiceflow-chat {
+          display: none !important;
+      }
+  }
+  {% endif %}
+
+  /* Macht die gesamte Card klickbar */
+.vfrc-card _1f1qam0 _19eum4t1 {
+  cursor: pointer;
+}
+
+/* Optional: Den kleinen Button innerhalb der Card ausblenden */
+.vfrc-button _1ytjivy0 _17qb7gk0 _1ytjivy3 {
+  display: none;
+}
+
+</style>
+
+{% schema %}
+{
+  "name": "Voiceflow Bubble",
+  "target": "section",
+  "settings": [
+    { 
+      "type": "checkbox", 
+      "id": "hide_on_mobile", 
+      "label": "Bubble auf Mobilgeräten ausblenden", 
+      "default": false 
+    },
+    { 
+      "type": "range", 
+      "id": "auto_open_delay", 
+      "label": "Zeit bis der Chat automatisch öffnet (Sekunden)", 
+      "min": 0, 
+      "max": 100, 
+      "step": 1, 
+      "default": 0
+    },
+    { 
+      "type": "range", 
+      "id": "auto_open_cooldown", 
+      "label": "Wartezeit vor erneutem Auto-Open (Minuten)", 
+      "min": 2, 
+      "max": 120, 
+      "step": 2, 
+      "default": 10
+    },
+    { 
+      "type": "range", 
+      "id": "proactive_message_count", 
+      "label": "Anzahl der proaktiven Nachrichten", 
+      "min": 0, 
+      "max": 5, 
+      "step": 1, 
+      "default": 0
+    },
+    { 
+      "type": "range", 
+      "id": "proactive_message_start_delay", 
+      "label": "Verzögerung vor der ersten Nachricht (Sekunden)", 
+      "min": 0, 
+      "max": 300, 
+      "step": 5, 
+      "default": 30
+    },
+    { 
+      "type": "range", 
+      "id": "proactive_message_interval", 
+      "label": "Zeit zwischen proaktiven Nachrichten (Sekunden)", 
+      "min": 0, 
+      "max": 120, 
+      "step": 5, 
+      "default": 30
+    },
+    { "type": "text", "id": "proactive_message_1", "label": "Proaktive Nachricht 1", "default": "👋 Hey! Brauchst du Hilfe?" },
+    { "type": "text", "id": "proactive_message_2", "label": "Proaktive Nachricht 2", "default": "Ich bin hier, um dir schnell zu helfen! 🚀" },
+    { "type": "text", "id": "proactive_message_3", "label": "Proaktive Nachricht 3", "default": "Schreib mir einfach, falls du Fragen hast! 😊" },
+    { "type": "text", "id": "proactive_message_4", "label": "Proaktive Nachricht 4", "default": "Text " },
+    { "type": "text", "id": "proactive_message_5", "label": "Proaktive Nachricht 5", "default": "Text " }
+  ]
+}
+{% endschema %}

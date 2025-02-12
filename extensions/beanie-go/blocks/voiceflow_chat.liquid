@@ -1,81 +1,140 @@
-{% unless request.device_type == 'mobile' %}
-{% assign product_name = block.settings.product.title %}
-{% assign page_slug = block.settings.page_slug %}
-{% assign bot_background_colour = block.settings.bot_background_colour %}
-{% assign user_background_colour = block.settings.user_background_colour %}
-{% assign user_text_colour = block.settings.user_text_colour %}
-{% assign bot_text_colour = block.settings.bot_text_colour %}
-{% assign send_label = block.settings.send_label %}
-{% assign type_here_label = block.settings.type_here_label %}
+{% comment %}
+  Lade die globalen Einstellungen aus den Metafields.
+  (Stelle sicher, dass du in Shopify ein Metafield im Namespace "global" mit dem Key "voiceflow_settings" angelegt und befüllt hast.)
+{% endcomment %}
+{% assign global_settings = shop.metafields.global.voiceflow_settings | parse_json %}
+
+{% if product %}
+  {% assign product_name = product.title %}
+{% else %}
+  {% assign product_name = block.settings.product.title %}
+{% endif %}
+
+{% assign page_slug = block.settings.page_slug | default: global_settings.page_slug %}
+{% assign bot_background_colour = block.settings.bot_background_colour | default: global_settings.bot_background_colour %}
+{% assign bot_text_colour = block.settings.bot_text_colour | default: global_settings.bot_text_colour %}
+{% assign user_background_colour = block.settings.user_background_colour | default: global_settings.user_background_colour %}
+{% assign user_text_colour = block.settings.user_text_colour | default: global_settings.user_text_colour %}
+{% assign chat_heading = block.settings.chat_heading | default: global_settings.chat_heading %}
+{% assign send_label = block.settings.send_label | default: global_settings.send_label %}
+{% assign type_here_label = block.settings.type_here_label | default: global_settings.type_here_label %}
+{% assign hide_on_desktop = block.settings.hide_on_desktop | default: global_settings.hide_on_desktop %}
+{% assign hide_on_mobile = block.settings.hide_on_mobile | default: global_settings.hide_on_mobile %}
+{% assign outer_radius = block.settings.outer_radius | default: global_settings.outer_radius %}
+{% assign chat_bubble_radius = block.settings.chat_bubble_radius | default: global_settings.chat_bubble_radius %}
+{% assign input_button_radius = block.settings.input_button_radius | default: global_settings.input_button_radius %}
 
 <style>
+  .vf-message {
+    border-radius: {{ chat_bubble_radius }}px !important;
+  }
   .vf-message-user {
       background-color: {{ user_background_colour }};
       color: {{ user_text_colour }};
+      border-radius: {{ chat_bubble_radius }}px !important;
   }
-
   .vf-message-agent {
       background-color: {{ bot_background_colour }};
       color: {{ bot_text_colour }};
+      border-radius: {{ chat_bubble_radius }}px !important;
   }
-
   #chat-send-button {
       background-color: {{ user_background_colour }};
       color: {{ user_text_colour }};
-      border: 1px {{ user_background_colour }};
+      border: 1px solid {{ bot_background_colour }} !important;
       padding: 10px 10px 8px 10px !important;
-      border-radius: 25px !important;
+      border-radius: 0px !important;
   }
-
   #chat-send-button img {
       width: 20px;
       height: 20px;
   }
-
   .vf-message-button {
-      background-color: {{ user_background_colour }};
-      color: {{ user_text_colour }};
-      border: 1px {{ user_background_colour }};
+    background-color: {{ user_background_colour }};
+    color: {{ user_text_colour }};
+    border: 0px solid {{ user_background_colour }};
+    border-radius: {{ chat_bubble_radius }}px !important;
   }
-
   .vf-send-button-icon {
       stroke: {{ user_text_colour }};
   }
-
-  .AIchatbot {
-      position: relative;
+  #chat-input,
+  #chat-input-mobile,
+  #chat-send-button,
+  #chat-send-button-mobile {
+    border-radius: {{ input_button_radius }}px !important;
   }
-
+  @media (min-width: 766px) {
+    .AIchatbot {
+        max-width: 980px;
+        margin: 0 auto;
+        position: relative;
+        padding: 20px 20px;
+        box-shadow: 0px 0px 200px rgba(0, 0, 0, 0.2);
+        border-radius: {{ outer_radius }}px !important;
+        background-color: rgb(237, 237, 237);
+    }
+  }
+  @media (max-width: 766px) {
+    .AIchatbot {
+        position: relative;
+        padding: 20px 20px;
+        box-shadow: 0px 0px 200px rgba(0, 0, 0, 0.2);
+        border-radius: 0px;
+        background-color: rgb(237, 237, 237);
+        border-radius: {{ outer_radius }}px !important;
+    }
+  }
+  {% if hide_on_desktop == true %}
+  @media (min-width: 766px) {
+      .AIchatbot {
+          display: none !important;
+      }
+  }
+  {% endif %}
+  {% if hide_on_mobile == true %}
+  @media (max-width: 765px) {
+      .AIchatbot {
+          display: none !important;
+      }
+  }
+  {% endif %}
   #chat-box {
-      margin-top: 100px;
+      margin-top: 20px;
+      background-color: rgb(237, 237, 237);
   }
 </style>
 
 <div class="AIchatbot">
-    <h2 class="desktop-heading">{{ block.settings.chat_heading }}</h2>
-    {% render 'chat_box', 
+    <h2 class="desktop-heading">{{ chat_heading }}</h2>
+    {% render 'chat_box',
        product_name: product_name, 
        page_slug: page_slug, 
        send_label: send_label, 
-       type_here_label: type_here_label 
+       type_here_label: type_here_label,
+       bot_avatar: bot_avatar
     %}
 </div>
-{% endunless %}
 
 {% schema %}
 {
   "name": "Desktop Voiceflow Chat",
   "target": "section",
   "settings": [
+    { "type": "checkbox", "id": "hide_on_desktop", "label": "Chat-Bubble auf Desktop ausblenden", "default": false },
+    { "type": "checkbox", "id": "hide_on_mobile", "label": "Chat-Bubble auf Mobilgeräten ausblenden", "default": false },
     { "type": "product", "id": "product", "label": "Product Discussed", "autofill": true },
-    { "type": "text", "id": "page_slug", "label": "Page Handling Slug", "default": "none"},
-    { "type": "color", "id": "bot_background_colour", "label": "Bot Message Colour", "default": "#F3F3F3"},
-    { "type": "color", "id": "bot_text_colour", "label": "Bot Text Colour", "default": "#000000" },
-    { "type": "color", "id": "user_background_colour", "label": "User Message Colour", "default": "#F6C801" },
-    { "type": "color", "id": "user_text_colour", "label": "User Text Colour", "default": "#ffffff" },
-    { "type": "textarea", "id": "chat_heading", "label": "Chat Heading", "default": "✨ Erfahre mehr mit KI ✨" },
+    { "type": "text", "id": "page_slug", "label": "Page Handling Slug", "default": "none" },
+    { "type": "color", "id": "bot_background_colour", "label": "Bot Message Colour", "default": "#FFFFFF" },
+    { "type": "color", "id": "bot_text_colour", "label": "Bot Text Colour", "default": "#1A1E23" },
+    { "type": "color", "id": "user_background_colour", "label": "User Message Colour", "default": "#FECF02" },
+    { "type": "color", "id": "user_text_colour", "label": "User Text Colour", "default": "#FFFAE5" },
+    { "type": "textarea", "id": "chat_heading", "label": "Chat Heading", "default": "KI-Beratung" },
     { "type": "text", "id": "send_label", "label": "Send Button Label", "default": "Abschicken" },
-    { "type": "text", "id": "type_here_label", "label": "Type Box Placeholder", "default": "Tippe hier dein Anliegen ein ..."}
+    { "type": "text", "id": "type_here_label", "label": "Type Box Placeholder", "default": "Tippe hier dein Anliegen ein ..." },
+    { "type": "range", "id": "outer_radius", "label": "Äußerer Container – Border Radius (px)", "default": 0, "min": 0, "max": 50, "step": 1 },
+    { "type": "range", "id": "chat_bubble_radius", "label": "Chat-Bubbles – Border Radius (px)", "default": 0, "min": 0, "max": 50, "step": 1 },
+    { "type": "range", "id": "input_button_radius", "label": "Eingabefeld & Button – Border Radius (px)", "default": 0, "min": 0, "max": 50, "step": 1 }
   ]
 }
 {% endschema %}

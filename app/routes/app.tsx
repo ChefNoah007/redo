@@ -26,6 +26,7 @@ export default function App() {
         </Link>
         <Link to="/app/additional">Transcripts</Link>
         <Link to="/app/additional copy">Sync</Link>
+        <Link to="/app/additional copy 2">Settings</Link>
       </NavMenu>
       <Outlet />
     </AppProvider>

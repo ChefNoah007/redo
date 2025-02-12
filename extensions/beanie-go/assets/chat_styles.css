@@ -14,24 +14,24 @@
     flex-grow: 1;
     font-size: 15px;
     padding: 10px;
-    border: 1px solid black;
+    border: 1px solid rgb(96, 96, 96);
     font-family: "Assistant", sans-serif;
     outline: none;
     margin: 3px;
     box-sizing: border-box;
-    border-radius: 25px;
+    border-radius: 0px;
 }
 
 #chat-input-mobile{
     flex-grow: 1;
     font-size: 15px;
     padding: 10px;
-    border: 1px solid black;
+    border: 1px solid rgb(92, 92, 92);
     font-family: "Assistant", sans-serif;
     outline: none;
     margin: 3px;
     box-sizing: border-box;
-    border-radius: 25px;
+    border-radius: 0px;
 }
 
 #chat-send-button{
@@ -43,7 +43,7 @@
     width: 10%;
     box-sizing: border-box;
     float: right;
-    border-radius: 25px;
+    border-radius: 0px;
 }
 
 #chat-send-button-mobile{
@@ -52,10 +52,10 @@
     cursor: pointer;
     font-family: "Assistant", sans-serif;
     margin: 3px;
-    width: 10%;
+    width: 15%;
     box-sizing: border-box;
     float: right;
-    border-radius: 25px;
+    border-radius: 0px;
 }
 
 #chat-box{
@@ -70,7 +70,7 @@
 .vf-message {
     font-size: 16px;
     margin: 5px;
-    border-radius: 25px;
+    border-radius: 0px;
     padding-bottom: 5px;
     padding-top: 5px;
     padding-left: 15px;
@@ -79,14 +79,20 @@
 }
 
 .vf-message-user {
-    color: white;
     float: right;
     max-width: 70%;
+    padding: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    font-family: "Assistant", sans-serif;
+    margin: 5px;
+    box-sizing: border-box;
+    border-radius: 0px;
 }
 
 .vf-message-agent {
-    color: black;
     float: left; 
+    max-width: 70%;
 }
 
 .vf-message-button{
@@ -96,7 +102,7 @@
     font-family: "Assistant", sans-serif;
     margin: 5px;
     box-sizing: border-box;
-    border-radius: 25px;
+    border-radius: 0px;
 }
 
 #chat-all-button-container{
@@ -112,14 +118,14 @@
 .chat-box-typing-indicator {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     height: 24px;
 }
 
 .chat-box-typing-indicator-mobile {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     height: 24px;
 }
   
@@ -127,7 +133,7 @@
     width: 6px;
     height: 6px;
     background-color: white;
-    border-radius: 50%;
+    border-radius: 0%;
     display: inline-block;
     margin: 0 2px;
     animation: typing 1s infinite;
@@ -155,4 +161,14 @@
     100% {
         transform: translateY(5);
     }
+}
+
+.AIchatbot_mobile h2 {
+    background-color: #FECF02 !important; /* Gelber Hintergrund */
+    color: #ffffff !important; /* Weiße Schrift */
+    font-weight: bold !important;
+    padding: 12px 18px !important; /* Höherer Balken */
+    font-size: 18px !important;
+    border-radius: 0px !important;
+    text-align: center;
 }
