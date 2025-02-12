@@ -3,7 +3,7 @@ import { json } from '@remix-run/node';
 
 const shop = process.env.SHOPIFY_SHOP_DOMAIN;
 const accessToken = process.env.SHOPIFY_ACCESS_TOKEN;
-const apiVersion = "2023-07"; // Passe dies an die gewünschte Version an
+const apiVersion = "2025-01"; // Passe dies an die gewünschte Version an
 
 export async function action({ request }) {
   if (request.method !== 'POST') {
