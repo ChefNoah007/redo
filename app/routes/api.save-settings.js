@@ -1,6 +1,7 @@
-// app/routes/api.save-settings.jsx
-import { json } from '@remix-run/node';
-import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
+import { json } from "@remix-run/node";
+import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
+import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
+import prisma from "../db.server.cjs";
 
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY,
@@ -9,11 +10,11 @@ const shopify = shopifyApi({
   hostName: process.env.SHOPIFY_APP_URL,
   apiVersion: LATEST_API_VERSION,
   isEmbeddedApp: true,
-  sessionStorage: undefined
+  sessionStorage: new PrismaSessionStorage(prisma),
 });
 
 export async function action({ request }) {
-  if (request.method !== 'POST') {
+  if (request.method !== "POST") {
     throw new Response("Method Not Allowed", { status: 405 });
   }
   
@@ -22,14 +23,14 @@ export async function action({ request }) {
   
   const shopDomain = "coffee-principles.myshopify.com";
   const offlineSessionId = shopify.session.getOfflineId(shopDomain);
-  const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
+  const session = await shopify.sessionStorage.loadSession(offlineSessionId);
   if (!session) {
     return json({ success: false, error: `No offline session found for shop ${shopDomain}` }, { status: 500 });
   }
   
   const client = new shopify.clients.Rest({ session });
   
-  // Prüfe, ob das Metafield bereits existiert
+  // Zuerst prüfen, ob das Metafield bereits existiert
   const getResponse = await client.get({
     path: "metafields",
     query: {
@@ -37,16 +38,14 @@ export async function action({ request }) {
       key: "global"
     }
   });
-  
   let metafieldId = null;
-  const metafields = getResponse.body.metafields;
-  if (metafields && metafields.length > 0) {
-    metafieldId = metafields[0].id;
+  if (getResponse.body.metafields && getResponse.body.metafields.length > 0) {
+    metafieldId = getResponse.body.metafields[0].id;
   }
   
   let updateResponse;
   if (metafieldId) {
-    // Aktualisiere das existierende Metafield per PUT
+    // Aktualisiere das vorhandene Metafield per PUT
     updateResponse = await client.put({
       path: `metafields/${metafieldId}`,
       data: {
