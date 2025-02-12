@@ -1,3 +1,4 @@
+// app/routes/api.save-settings.jsx
 import { json } from "@remix-run/node";
 import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
@@ -21,18 +22,17 @@ export async function action({ request }) {
   try {
     const { settings } = await request.json();
     const value = JSON.stringify(settings);
-    
+  
     const shopDomain = "coffee-principles.myshopify.com";
     const offlineSessionId = shopify.session.getOfflineId(shopDomain);
     const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
     if (!session) {
-      console.error(`No offline session found for shop ${shopDomain}`);
       return json({ success: false, error: `No offline session found for shop ${shopDomain}` }, { status: 500 });
     }
-    
+  
     const client = new shopify.clients.Rest({ session });
-    
-    // Prüfe, ob das Metafield bereits existiert
+  
+    // Zuerst prüfen, ob das Metafield bereits existiert
     const getResponse = await client.get({
       path: "metafields",
       query: {
@@ -40,13 +40,11 @@ export async function action({ request }) {
         key: "global"
       }
     });
-    console.log("GET Metafield Response:", getResponse.body);
-    
     let metafieldId = null;
     if (getResponse.body.metafields && getResponse.body.metafields.length > 0) {
       metafieldId = getResponse.body.metafields[0].id;
     }
-    
+  
     let updateResponse;
     if (metafieldId) {
       // Aktualisiere das vorhandene Metafield per PUT
@@ -76,11 +74,11 @@ export async function action({ request }) {
         type: "application/json"
       });
     }
-    
-    console.log("Update Response Status:", updateResponse.status);
+  
+    console.log("Update Response Status:", updateResponse.response.statusCode);
     console.log("Update Response Body:", updateResponse.body);
-    
-    if (updateResponse.body && updateResponse.status === 200) {
+  
+    if (updateResponse.body && updateResponse.response.statusCode === 200) {
       return json({ success: true, data: updateResponse.body });
     } else {
       return json({ success: false, error: updateResponse.body }, { status: 500 });
