@@ -2,7 +2,7 @@
   Lade die globalen Einstellungen aus den Metafields.
   (Stelle sicher, dass du in Shopify ein Metafield im Namespace "global" mit dem Key "voiceflow_settings" angelegt und befüllt hast.)
 {% endcomment %}
-{% assign global_settings = shop.metafields.ai_agents_einstellungen.global | parse_json %}
+{% assign global_settings = shop.metafields.ai_agents_einstellungen.global %}
 
 {% if product %}
   {% assign product_name = product.title %}

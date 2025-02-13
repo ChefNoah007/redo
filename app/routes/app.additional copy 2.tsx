@@ -7,7 +7,6 @@ export default function SettingsPage() {
   // Zustand für alle Felder
   const [hideOnDesktop, setHideOnDesktop] = useState(false);
   const [hideOnMobile, setHideOnMobile] = useState(false);
-  const [pageSlug, setPageSlug] = useState('');
   const [botBackgroundColour, setBotBackgroundColour] = useState('#FFFFFF');
   const [botTextColour, setBotTextColour] = useState('#1A1E23');
   const [userBackgroundColour, setUserBackgroundColour] = useState('#FECF02');
@@ -30,7 +29,6 @@ export default function SettingsPage() {
          if(data.settings) {
            setHideOnDesktop(data.settings.hide_on_desktop);
            setHideOnMobile(data.settings.hide_on_mobile);
-           setPageSlug(data.settings.page_slug);
            setBotBackgroundColour(data.settings.bot_background_colour);
            setBotTextColour(data.settings.bot_text_colour);
            setUserBackgroundColour(data.settings.user_background_colour);
@@ -49,7 +47,6 @@ export default function SettingsPage() {
     const settings = {
       hide_on_desktop: hideOnDesktop,
       hide_on_mobile: hideOnMobile,
-      page_slug: pageSlug,
       bot_background_colour: botBackgroundColour,
       bot_text_colour: botTextColour,
       user_background_colour: userBackgroundColour,
@@ -91,7 +88,6 @@ export default function SettingsPage() {
               <FormLayout>
                 <Checkbox label="Chat-Bubble auf Desktop ausblenden" checked={hideOnDesktop} onChange={setHideOnDesktop} />
                 <Checkbox label="Chat-Bubble auf Mobilgeräten ausblenden" checked={hideOnMobile} onChange={setHideOnMobile} />
-                <TextField label="Page Slug" value={pageSlug} onChange={setPageSlug} autoComplete="off" />
                 <TextField label="Bot Hintergrundfarbe" value={botBackgroundColour} onChange={setBotBackgroundColour} autoComplete="off"  />
                 <TextField label="Bot Textfarbe" value={botTextColour} onChange={setBotTextColour} autoComplete="off" />
                 <TextField label="User Hintergrundfarbe" value={userBackgroundColour} onChange={setUserBackgroundColour} autoComplete="off" />

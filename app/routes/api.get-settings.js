@@ -47,7 +47,6 @@ export async function loader({ request }) {
     settings = {
       hide_on_desktop: false,
       hide_on_mobile: false,
-      page_slug: "none",
       bot_background_colour: "#FFFFFF",
       bot_text_colour: "#1A1E23",
       user_background_colour: "#FECF02",

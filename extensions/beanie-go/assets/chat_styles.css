@@ -119,8 +119,15 @@
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    height: 24px;
+    height: 10px;
 }
+
+#chat-box-typing-indicator-container {
+    font-size: 16px;       /* Schriftgröße erhöhen */
+    font-family: "Assistant", sans-serif; /* Schriftart */
+    padding: 5px;
+}
+
 
 .chat-box-typing-indicator-mobile {
     display: flex;
