@@ -96,13 +96,9 @@ export const action = async ({ request }) => {
         schema: {
           searchableFields: [
             "ProductName",
-            "ProductID",
-            "ProductPrice",
             "ProductDescription",
-            "ProductURL",
-            "ProductVariants",
             "ProductTags",
-            "ProductImages",
+            "ProductVariants",
           ],
           metadataFields: [
             "ProductName",
@@ -115,7 +111,7 @@ export const action = async ({ request }) => {
             "ProductImages",
           ],
         },
-        name: "ShopifyProducts",
+        name: "ShopifyProdukte",
         items: normalizedItems,
       },
     };
