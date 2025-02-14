@@ -50,71 +50,67 @@ export const action = async ({ request }) => {
     const normalizedItems = allProducts.map((product) => {
       const removeHtmlRegex = /<[^>]*>?/gm;
       const removeNewlinesRegex = /[\r\n\t]+/g;
-
+    
       // Beschreibung und Titel säubern
       let desc = product.body_html || "";
       desc = desc.replace(removeHtmlRegex, "").replace(removeNewlinesRegex, " ").trim();
-
+    
       let name = product.title || "";
       name = name.replace(removeNewlinesRegex, " ").trim();
-
+    
       // Produkt-URL generieren
       const productUrl = product.online_store_url || `https://${shopDomain}/products/${product.handle}`;
-
-      // Varianten formatieren
-      const variants = product.variants.map((variant) => {
-        return `${variant.title || "Default"}: ${variant.price ? `${variant.price} €` : "N/A"}`;
-      });
-      const formattedVariants = variants.join(" | ");
-
-      // Bilder extrahieren
+    
+      // Varianten als Array von Objekten
+      const variants = product.variants.map((variant) => ({
+        title: variant.title || "Default",
+        price: variant.price ? parseFloat(variant.price) : null
+      }));
+    
+      // Bilder als Array
       const images = product.images.map((img) => img.src);
-
-      // Tags formatieren
+    
+      // Tags als Array
       const tags = product.tags ? product.tags.split(",").map((tag) => tag.trim()) : [];
-
+    
       return {
         ProductID: product.id.toString(),
         ProductName: name,
-        ProductPrice: product.variants?.[0]?.price ? `${product.variants[0].price} €` : "N/A",
+        // Numerischer Preis ohne Währungssymbol (evtl. zusätzlich ein "Currency"-Feld)
+        ProductPrice: product.variants?.[0]?.price ? parseFloat(product.variants[0].price) : null,
         ProductDescription: desc,
         ProductURL: productUrl,
-        ProductVariants: formattedVariants,
-        ProductTags: tags.join(", "), // Tags als String
-        ProductImages: images.join(", "), // Bilder als String
+        ProductVariants: variants, // Array von Objekten
+        ProductTags: tags,         // Array von Strings
+        ProductImages: images        // Array von Strings
       };
     });
-
-    // Voiceflow URL mit optionalem `overwrite`
-    let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload/table";
-    if (overwrite) {
-      voiceflowUrl += "?overwrite=true";
-    }
-
+    
     const voiceflowData = {
       data: {
         schema: {
           searchableFields: [
             "ProductName",
             "ProductDescription",
-            "ProductTags",
-            "ProductVariants",
+            // Bei Arrays kann die semantische Suche oft direkt im Array suchen:
+            "ProductTags"
           ],
           metadataFields: [
-            "ProductName",
             "ProductID",
+            "ProductName",
             "ProductPrice",
             "ProductDescription",
             "ProductURL",
             "ProductVariants",
             "ProductTags",
-            "ProductImages",
+            "ProductImages"
           ],
         },
         name: "ShopifyProdukte",
         items: normalizedItems,
       },
     };
+    
 
     const voiceflowResponse = await fetch(voiceflowUrl, {
       method: "POST",
