@@ -51,40 +51,35 @@ export const action = async ({ request }) => {
       const removeHtmlRegex = /<[^>]*>?/gm;
       const removeNewlinesRegex = /[\r\n\t]+/g;
     
-      // Beschreibung und Titel säubern
       let desc = product.body_html || "";
       desc = desc.replace(removeHtmlRegex, "").replace(removeNewlinesRegex, " ").trim();
     
       let name = product.title || "";
       name = name.replace(removeNewlinesRegex, " ").trim();
     
-      // Produkt-URL generieren
       const productUrl = product.online_store_url || `https://${shopDomain}/products/${product.handle}`;
     
-      // Varianten als Array von Objekten
       const variants = product.variants.map((variant) => ({
         title: variant.title || "Default",
         price: variant.price ? parseFloat(variant.price) : null
       }));
     
-      // Bilder als Array
       const images = product.images.map((img) => img.src);
-    
-      // Tags als Array
       const tags = product.tags ? product.tags.split(",").map((tag) => tag.trim()) : [];
     
       return {
         ProductID: product.id.toString(),
         ProductName: name,
-        // Numerischer Preis ohne Währungssymbol (evtl. zusätzlich ein "Currency"-Feld)
         ProductPrice: product.variants?.[0]?.price ? parseFloat(product.variants[0].price) : null,
         ProductDescription: desc,
         ProductURL: productUrl,
-        ProductVariants: variants, // Array von Objekten
-        ProductTags: tags,         // Array von Strings
-        ProductImages: images        // Array von Strings
+        ProductVariants: variants,             // Komplexer Typ, nur in metadataFields
+        ProductTags: tags,                     // Komplexer Typ, nur in metadataFields
+        ProductTagsStr: tags.join(", "),       // Einfacher String für die Suche
+        ProductImages: images                  // Komplexer Typ, nur in metadataFields
       };
     });
+    
 
     // Voiceflow URL mit optionalem `overwrite`
     let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload/table";
@@ -98,7 +93,7 @@ export const action = async ({ request }) => {
           searchableFields: [
             "ProductName",
             "ProductDescription",
-            "ProductTags"
+            "ProductTagsStr" // Verwende den flachen String statt des Arrays
           ],
           metadataFields: [
             "ProductID",
