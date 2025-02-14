@@ -46,7 +46,6 @@ export const action = async ({ request }) => {
       nextPageCursor = pageInfo?.nextPage?.query.page_info;
       hasNextPage = Boolean(nextPageCursor);
     }
-
     const normalizedItems = allProducts.map((product) => {
       const removeHtmlRegex = /<[^>]*>?/gm;
       const removeNewlinesRegex = /[\r\n\t]+/g;
@@ -67,6 +66,9 @@ export const action = async ({ request }) => {
       const images = product.images.map((img) => img.src);
       const tags = product.tags ? product.tags.split(",").map((tag) => tag.trim()) : [];
     
+      // Statischer Custom-Tag "Produkte"
+      const customTag = "Produkte";
+    
       return {
         ProductID: product.id.toString(),
         ProductName: name,
@@ -76,7 +78,8 @@ export const action = async ({ request }) => {
         ProductVariants: variants,             // Komplexer Typ, nur in metadataFields
         ProductTags: tags,                     // Komplexer Typ, nur in metadataFields
         ProductTagsStr: tags.join(", "),       // Einfacher String für die Suche
-        ProductImages: images                  // Komplexer Typ, nur in metadataFields
+        ProductImages: images,                 // Komplexer Typ, nur in metadataFields
+        CustomTag: customTag                   // Statischer Custom-Tag "Produkte"
       };
     });
     
@@ -93,7 +96,8 @@ export const action = async ({ request }) => {
           searchableFields: [
             "ProductName",
             "ProductDescription",
-            "ProductTagsStr" // Verwende den flachen String statt des Arrays
+            "ProductTagsStr",
+            "CustomTag"  // Custom-Tag als einfacher String
           ],
           metadataFields: [
             "ProductID",
@@ -103,7 +107,8 @@ export const action = async ({ request }) => {
             "ProductURL",
             "ProductVariants",
             "ProductTags",
-            "ProductImages"
+            "ProductImages",
+            "CustomTag"
           ],
         },
         name: "ShopifyProdukte",
