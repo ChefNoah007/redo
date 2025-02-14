@@ -85,14 +85,19 @@ export const action = async ({ request }) => {
         ProductImages: images        // Array von Strings
       };
     });
-    
+
+    // Voiceflow URL mit optionalem `overwrite`
+    let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload/table";
+    if (overwrite) {
+      voiceflowUrl += "?overwrite=true";
+    }
+
     const voiceflowData = {
       data: {
         schema: {
           searchableFields: [
             "ProductName",
             "ProductDescription",
-            // Bei Arrays kann die semantische Suche oft direkt im Array suchen:
             "ProductTags"
           ],
           metadataFields: [
@@ -110,7 +115,6 @@ export const action = async ({ request }) => {
         items: normalizedItems,
       },
     };
-    
 
     const voiceflowResponse = await fetch(voiceflowUrl, {
       method: "POST",
