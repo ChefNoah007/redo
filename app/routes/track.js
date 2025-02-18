@@ -36,8 +36,3 @@ app.get('/api/daily-data', (req, res) => {
   
   res.json({ dailyInteractions, dailyRevenue });
 });
-
-const PORT = process.env.PORT || 3006;
-app.listen(PORT, () => {
-  console.log(`Server läuft auf Port ${PORT}`);
-});
