@@ -2,8 +2,7 @@
 import { json } from "@remix-run/node";
 import mongoose from "mongoose";
 
-// Stelle sicher, dass du die Verbindung nur einmal herstellst.
-// Falls die Verbindung bereits besteht, verwende sie.
+// Stelle sicher, dass du die MongoDB-Verbindung nur einmal aufbaust.
 if (!mongoose.connection.readyState) {
   mongoose.connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
@@ -11,7 +10,7 @@ if (!mongoose.connection.readyState) {
   });
 }
 
-// Definiere ein Schema für Tracking-Daten
+// Definiere das Schema für Tracking-Daten
 const trackingSchema = new mongoose.Schema({
   transaction_id: String,
   total: Number,
@@ -19,11 +18,11 @@ const trackingSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-// Um Fehler zu vermeiden, wenn das Model mehrfach definiert wird, prüfe, ob es bereits existiert
-const Tracking =
-  mongoose.models.Tracking || mongoose.model("Tracking", trackingSchema);
+// Vermeide Mehrfach-Definitionen, indem du prüfst, ob das Model bereits existiert.
+const Tracking = mongoose.models.Tracking || mongoose.model("Tracking", trackingSchema);
 
-// Exportiere die action-Funktion, die ausschließlich auf dem Server läuft
+// Exportiere ausschließlich serverseitige Funktionen (kein Default Export!)
+// Remix behandelt diese Route dann als API-Route, die nur auf dem Server läuft.
 export async function action({ request }) {
   try {
     const data = await request.json();
