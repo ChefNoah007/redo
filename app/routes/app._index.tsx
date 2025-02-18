@@ -12,7 +12,7 @@ import {
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 import {
-  BarElement, // WICHTIG
+  BarElement,
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
@@ -22,16 +22,15 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { Line } from "react-chartjs-2";
+import { Line, Bar } from "react-chartjs-2";
 import { authenticate } from "../shopify.server";
-import { Bar } from "react-chartjs-2";
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
-  BarElement, // HIER hinzufügen
+  BarElement,
   Title,
   Tooltip,
   Legend
@@ -47,7 +46,12 @@ interface IntentData {
 
 interface DailyInteractionData {
   date: string;
-  count: number;
+  count: number; // Für Interaktionen
+}
+
+interface DailyRevenueData {
+  date: string;
+  revenue: number;
 }
 
 interface ApiResult {
@@ -55,6 +59,7 @@ interface ApiResult {
     count?: number;
     intents?: IntentData[];
     dailyInteractions?: DailyInteractionData[];
+    dailyRevenue?: DailyRevenueData[];
     averageSessionDuration?: number;
     messagesExchanged?: number;
     errorRate?: number;
@@ -84,22 +89,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function Index() {
   const fetcher = useFetcher();
-  const [interactions, setInteractions] = useState<number | null>(null);
   const [uniqueUsers, setUniqueUsers] = useState<number | null>(null);
   const [topIntents, setTopIntents] = useState<IntentData[] | null>(null);
   const [sessions, setSessions] = useState<number | null>(null);
   const [dailyInteractions, setDailyInteractions] = useState<DailyInteractionData[] | null>(null);
+  const [dailyRevenue, setDailyRevenue] = useState<DailyRevenueData[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<string>("7d");
   const [cachedData, setCachedData] = useState<Record<string, DailyInteractionData[]>>({}); // Cache für dailyInteractions
+  const [cachedRevenue, setCachedRevenue] = useState<Record<string, DailyRevenueData[]>>({}); // Cache für dailyRevenue
 
   const fetchDailyInteractions = async (selectedTimeRange: string) => {
     if (cachedData[selectedTimeRange]) {
-      console.log(`Using cached data for ${selectedTimeRange}`);
-      return cachedData[selectedTimeRange]; // Verwende gecachte Daten
+      console.log(`Using cached interactions for ${selectedTimeRange}`);
+      return cachedData[selectedTimeRange];
     }
 
-    const days = parseInt(selectedTimeRange.replace("d", "")); // Anzahl der Tage auslesen
+    const days = parseInt(selectedTimeRange.replace("d", ""));
     const now = new Date();
     const dailyData: DailyInteractionData[] = [];
 
@@ -114,9 +120,7 @@ export default function Index() {
       try {
         const response = await fetch("https://redo-ia4o.onrender.com/proxy", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             query: [
               {
@@ -131,41 +135,95 @@ export default function Index() {
             ],
           }),
         });
-
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`Error: ${response.status} - ${errorText}`);
         }
-
         const data: ApiResult = await response.json();
         const localDate = new Date(dayStart);
         dailyData.push({
-          date: localDate.toISOString().split("T")[0], // Format als YYYY-MM-DD
+          date: localDate.toISOString().split("T")[0],
           count: data.result[0]?.count || 0,
         });
       } catch (error) {
-        console.error(`Error fetching data for ${dayStart.toISOString()}:`, error);
+        console.error(`Error fetching interactions for ${dayStart.toISOString()}:`, error);
       }
     }
 
-    const reversedData = dailyData.reverse(); // Daten in aufsteigender Reihenfolge sortieren
-    setCachedData((prev) => ({ ...prev, [selectedTimeRange]: reversedData })); // Cache aktualisieren
+    const reversedData = dailyData.reverse();
+    setCachedData((prev) => ({ ...prev, [selectedTimeRange]: reversedData }));
+    return reversedData;
+  };
+
+  const fetchDailyRevenue = async (selectedTimeRange: string) => {
+    if (cachedRevenue[selectedTimeRange]) {
+      console.log(`Using cached revenue data for ${selectedTimeRange}`);
+      return cachedRevenue[selectedTimeRange];
+    }
+
+    const days = parseInt(selectedTimeRange.replace("d", ""));
+    const now = new Date();
+    const revenueData: DailyRevenueData[] = [];
+
+    for (let i = 0; i < days; i++) {
+      const dayStart = new Date(now);
+      dayStart.setHours(0, 0, 0, 0);
+      dayStart.setDate(dayStart.getDate() - i);
+
+      const dayEnd = new Date(dayStart);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      try {
+        const response = await fetch("https://redo-ia4o.onrender.com/api.daily-data", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: [
+              {
+                name: "revenue",
+                filter: {
+                  projectID: PROJECT_ID,
+                  startTime: dayStart.toISOString(),
+                  endTime: dayEnd.toISOString(),
+                  platform: { not: "canvas-prototype" },
+                },
+              },
+            ],
+          }),
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Error: ${response.status} - ${errorText}`);
+        }
+        const data: ApiResult = await response.json();
+        const localDate = new Date(dayStart);
+        revenueData.push({
+          date: localDate.toISOString().split("T")[0],
+          revenue: data.result[0]?.count || 0, // Hier gehen wir davon aus, dass "count" den Umsatz repräsentiert.
+        });
+      } catch (error) {
+        console.error(`Error fetching revenue for ${dayStart.toISOString()}:`, error);
+      }
+    }
+
+    const reversedData = revenueData.reverse();
+    setCachedRevenue((prev) => ({ ...prev, [selectedTimeRange]: reversedData }));
     return reversedData;
   };
 
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
-
     try {
-      const dailyData = await fetchDailyInteractions(selectedTimeRange);
-      setDailyInteractions(dailyData);
+      const dailyInteractionsData = await fetchDailyInteractions(selectedTimeRange);
+      setDailyInteractions(dailyInteractionsData);
+
+      const dailyRevenueData = await fetchDailyRevenue(selectedTimeRange);
+      setDailyRevenue(dailyRevenueData);
 
       const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
-      const response = await fetch("http://localhost:5001/proxy", {
+      const response = await fetch("https://redo-ia4o.onrender.com/proxy", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: [
             {
@@ -220,26 +278,35 @@ export default function Index() {
     fetchDashboardData(timeRange);
   }, [timeRange]);
 
-  const dynamicLabels = dailyInteractions?.map((entry) => {
-    const date = new Date(entry.date);
-    date.setDate(date.getDate() + 1); // Verschiebe das Datum um einen Tag nach vorne
-    return date.toLocaleDateString("de-DE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "2-digit",
-    });
-  }) || [];
+  const dynamicLabels =
+    dailyInteractions?.map((entry) => {
+      const date = new Date(entry.date);
+      date.setDate(date.getDate() + 1); // Verschiebe das Datum um einen Tag nach vorne
+      return date.toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+      });
+    }) || [];
 
-  const dynamicDataPoints = dailyInteractions?.map((entry) => entry.count) || [];
+  const interactionsData = dailyInteractions?.map((entry) => entry.count) || [];
+  const revenueData = dailyRevenue?.map((entry) => entry.revenue) || [];
 
   const lineChartData = {
     labels: dynamicLabels,
     datasets: [
       {
         label: "Interactions Over Time",
-        data: dynamicDataPoints,
+        data: interactionsData,
         borderColor: "#36a2eb",
         backgroundColor: "rgba(54, 162, 235, 0.2)",
+        tension: 0.4,
+      },
+      {
+        label: "Revenue (in €)",
+        data: revenueData,
+        borderColor: "#FF6384",
+        backgroundColor: "rgba(255, 99, 132, 0.2)",
         tension: 0.4,
       },
     ],
@@ -253,15 +320,12 @@ export default function Index() {
       },
       title: {
         display: true,
-        text: "Interactions Over Time",
+        text: "Daily Interactions and Revenue",
       },
     },
     scales: {
       y: {
         beginAtZero: true,
-        ticks: {
-          stepSize: Math.ceil((Math.max(...dynamicDataPoints) || 1) / 5),
-        },
       },
     },
   };
@@ -271,20 +335,20 @@ export default function Index() {
     datasets: [
       {
         label: "Unique Users Over Time",
-        data: dailyInteractions?.map((entry) => entry.count), // Ersetze durch echte Daten für Users
+        data: dailyInteractions?.map((entry) => entry.count), // Beispiel: ersetze durch echte Daten
         borderColor: "#FF6384",
         backgroundColor: "rgba(255, 99, 132, 0.2)",
         tension: 0.4,
       },
       {
         label: "Sessions Over Time",
-        data: dailyInteractions?.map((entry) => entry.count), // Ersetze durch echte Daten für Sessions
+        data: dailyInteractions?.map((entry) => entry.count), // Beispiel: ersetze durch echte Daten
         borderColor: "#36A2EB",
         backgroundColor: "rgba(54, 162, 235, 0.2)",
         tension: 0.4,
       },
     ],
-  };  
+  };
 
   const barChartData = {
     labels: topIntents?.map((intent) => intent.name) || [],
@@ -306,10 +370,10 @@ export default function Index() {
 
   const barChartOptions = {
     responsive: true,
-    indexAxis: "y", // Muss explizit "y" oder "x" sein
+    indexAxis: "y",
     plugins: {
       legend: {
-        position: "top", // "top", "left", "right", "bottom", "center"
+        position: "top",
       },
       title: {
         display: true,
@@ -321,11 +385,7 @@ export default function Index() {
         beginAtZero: true,
       },
     },
-  } as const; // 'as const' erzwingt die exakten Werte
-  
-  
-  
-  
+  } as const;
 
   return (
     <Page>
@@ -345,17 +405,21 @@ export default function Index() {
             />
           </Card>
         </Layout.Section>
-  
-        {/* Interactions */}
+
+        {/* Interactions und Umsatz */}
         <Layout.Section>
           <Card>
             <Text as="h3" variant="headingMd">
-              Interactions
+              Daily Interactions and Revenue
             </Text>
-            <Line data={lineChartData} options={lineChartOptions} />
+            {isLoading ? (
+              <Text as={"h5"}>Loading...</Text>
+            ) : (
+              <Line data={lineChartData} options={lineChartOptions} />
+            )}
           </Card>
         </Layout.Section>
-  
+
         {/* Sessions and Users vs. Top Intents */}
         <Layout.Section variant="oneHalf">
           <Card>
