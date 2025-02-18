@@ -1,8 +1,8 @@
-// app/routes/daily-data.server.js
+// app/routes/api/daily-data.server.js
 import { json } from "@remix-run/node";
 import mongoose from "mongoose";
 
-// Stelle sicher, dass du eine Verbindung zur Datenbank aufbaust
+// Baue die Verbindung zu MongoDB nur einmal auf
 if (!mongoose.connection.readyState) {
   mongoose.connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
@@ -10,15 +10,19 @@ if (!mongoose.connection.readyState) {
   });
 }
 
-// Beispielhaftes Schema und Model (sollte ggf. zentral definiert werden)
+// Definiere das Schema für Tracking-Daten
 const trackingSchema = new mongoose.Schema({
   transaction_id: String,
   total: Number,
   currency: String,
   createdAt: { type: Date, default: Date.now },
 });
-const Tracking = mongoose.models.Tracking || mongoose.model("Tracking", trackingSchema);
 
+// Vermeide Mehrfach-Definitionen
+const Tracking =
+  mongoose.models.Tracking || mongoose.model("Tracking", trackingSchema);
+
+// Exportiere ausschließlich den Loader – **kein Default Export!**
 export async function loader() {
   try {
     const today = new Date();
@@ -34,19 +38,19 @@ export async function loader() {
       },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-          dailyRevenue: { $sum: '$total' },
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          dailyRevenue: { $sum: "$total" },
           count: { $sum: 1 },
         },
       },
       { $sort: { _id: 1 } },
     ]);
 
-    const dailyInteractions = results.map(item => ({
+    const dailyInteractions = results.map((item) => ({
       date: item._id,
       count: item.count,
     }));
-    const dailyRevenue = results.map(item => ({
+    const dailyRevenue = results.map((item) => ({
       date: item._id,
       revenue: item.dailyRevenue,
     }));
