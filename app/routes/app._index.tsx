@@ -165,7 +165,6 @@ export default function Index() {
       try {
         const response = await fetch("https://redo-ia4o.onrender.com/daily-data", {
           method: "GET", // GET-Anfrage
-          headers: { "Content-Type": "application/json" },
         });
         if (!response.ok) {
           const errorText = await response.text();
