@@ -1,21 +1,42 @@
-// app/routes/daily-data.js
-export async function loader() {
-    const today = new Date();
-    let dailyInteractions = [];
-    let dailyRevenue = [];
+// GET-Endpunkt zum Aggregieren der Tracking-Daten
+app.get('/daily-data', async (req, res) => {
+    try {
+      const today = new Date();
+      // Starte vor 6 Tagen (damit insgesamt 7 Tage abgedeckt werden)
+      const startDate = new Date();
+      startDate.setDate(today.getDate() - 6);
+      startDate.setHours(0, 0, 0, 0);
   
-    for (let i = 6; i >= 0; i--) {
-      let date = new Date(today);
-      date.setDate(today.getDate() - i);
-      const dateString = date.toISOString().split("T")[0];
+      const results = await Tracking.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: startDate, $lte: today },
+          },
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            dailyRevenue: { $sum: '$total' },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]);
   
-      dailyInteractions.push({ date: dateString, count: Math.floor(Math.random() * 100) + 50 });
-      dailyRevenue.push({ date: dateString, revenue: Math.floor(Math.random() * 1000) + 200 });
+      // Formatiere die Ergebnisse für dein Dashboard
+      const dailyInteractions = results.map(item => ({
+        date: item._id,
+        count: item.count,
+      }));
+      const dailyRevenue = results.map(item => ({
+        date: item._id,
+        revenue: item.dailyRevenue,
+      }));
+  
+      res.json({ dailyInteractions, dailyRevenue });
+    } catch (error) {
+      console.error('Error aggregating daily data:', error);
+      res.status(500).json({ message: 'Unexpected Server Error' });
     }
-  
-    return new Response(
-      JSON.stringify({ dailyInteractions, dailyRevenue }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  }
+  });
   
