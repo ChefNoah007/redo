@@ -20,7 +20,7 @@ app.post('/track', (req, res) => {
 
 // Aggregierter Endpunkt für tägliche Daten (Dummy-Beispiel)
 // In der Praxis würdest du hier in einer Datenbank gespeicherte Daten aggregieren
-app.get('/api/daily-data', (req, res) => {
+app.get('/api.daily-data', (req, res) => {
   const today = new Date();
   let dailyInteractions = [];
   let dailyRevenue = [];
