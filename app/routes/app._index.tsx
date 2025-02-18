@@ -148,7 +148,7 @@ export default function Index() {
     return reversedData;
   };
 
-  const fetchDailyRevenue = async (selectedTimeRange: string) => {
+  const fetchDailyRevenue = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
     if (cachedRevenue[selectedTimeRange]) {
       console.log(`Using cached revenue data for ${selectedTimeRange}`);
       return cachedRevenue[selectedTimeRange];
@@ -164,32 +164,16 @@ export default function Index() {
       dayEnd.setHours(23, 59, 59, 999);
       try {
         const response = await fetch("https://redo-ia4o.onrender.com/daily-data", {
-          method: "POST",
+          method: "GET", // GET-Anfrage
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query: [
-              {
-                name: "revenue",
-                filter: {
-                  projectID: PROJECT_ID,
-                  startTime: dayStart.toISOString(),
-                  endTime: dayEnd.toISOString(),
-                  platform: { not: "canvas-prototype" },
-                },
-              },
-            ],
-          }),
         });
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`Error: ${response.status} - ${errorText}`);
         }
-        const data: ApiResult = await response.json();
-        const localDate = new Date(dayStart);
-        revenueData.push({
-          date: localDate.toISOString().split("T")[0],
-          revenue: data.result[0]?.count || 0, // Hier nehmen wir an, dass "count" den Umsatz repräsentiert. Passe dies ggf. an.
-        });
+        const data: { dailyRevenue: DailyRevenueData[] } = await response.json();
+        // Verwende einen leeren Array, falls data.dailyRevenue undefined ist
+        revenueData.push(...(data.dailyRevenue ?? []));
       } catch (error) {
         console.error(`Error fetching revenue for ${dayStart.toISOString()}:`, error);
       }
@@ -198,6 +182,7 @@ export default function Index() {
     setCachedRevenue((prev) => ({ ...prev, [selectedTimeRange]: reversedData }));
     return reversedData;
   };
+  
 
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
@@ -299,22 +284,11 @@ export default function Index() {
   const lineChartOptions = {
     responsive: true,
     plugins: {
-      legend: {
-        position: "top" as const,
-      },
-      title: {
-        display: true,
-        text: "Daily Interactions and Revenue",
-      },
+      legend: { position: "top" as const },
+      title: { display: true, text: "Daily Interactions and Revenue" },
     },
-    scales: {
-      y: {
-        beginAtZero: true,
-      },
-    },
+    scales: { y: { beginAtZero: true } },
   };
-
-  // Weitere Diagramme bleiben unverändert
 
   return (
     <Page>
@@ -334,7 +308,6 @@ export default function Index() {
           </Card>
         </Layout.Section>
 
-        {/* Anzeige des Liniendiagramms für Interaktionen und Umsatz */}
         <Layout.Section>
           <Card>
             <Text as="h3" variant="headingMd">
@@ -348,7 +321,7 @@ export default function Index() {
           </Card>
         </Layout.Section>
 
-        {/* Die weiteren Abschnitte für Sessions, Users, Top Intents bleiben unverändert */}
+        {/* Weitere Diagramme können hier ergänzt werden */}
         <Layout.Section variant="oneHalf">
           <Card>
             <Text as="h3" variant="headingMd">
@@ -384,19 +357,10 @@ export default function Index() {
                 responsive: true,
                 indexAxis: "y",
                 plugins: {
-                  legend: {
-                    position: "top",
-                  },
-                  title: {
-                    display: true,
-                    text: "Top Intents",
-                  },
+                  legend: { position: "top" },
+                  title: { display: true, text: "Top Intents" },
                 },
-                scales: {
-                  x: {
-                    beginAtZero: true,
-                  },
-                },
+                scales: { x: { beginAtZero: true } },
               }}
             />
           </Card>

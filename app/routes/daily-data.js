@@ -6,7 +6,7 @@ const app = express();
 app.use(bodyParser.json());
 
 // GET-Endpunkt, der aggregierte Dummy-Daten für die letzten 7 Tage liefert
-app.get('/api/daily-data', (req, res) => {
+app.get('/daily-data', (req, res) => {
   const today = new Date();
   let dailyInteractions = [];
   let dailyRevenue = [];
