@@ -1,3 +1,4 @@
+
 (function() { 
     // 1) marked.js-Setup (unverändert):
     function setupMarked() {
@@ -252,6 +253,7 @@ document.addEventListener('DOMContentLoaded', function () {
       };
       message = marked.parse(message, { renderer: renderer });
     } else {
+      // Fallback
       message = message.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
       message = message.replace(/\*(.*?)\*/g, '<i>$1</i>');
       message = message.replace(/\[(.*?)\]\((.*?)\)/g, '<a class="link-highlight" href="$2" target="_blank">$1</a>');
@@ -278,12 +280,15 @@ document.addEventListener('DOMContentLoaded', function () {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
+  // WICHTIG: Hier wird jetzt setUsedChatAttribute() auch beim Button-Klick auf "choice"-Buttons aufgerufen
   function addAgentNormalButton(buttons) {
     for (const button of buttons) {
       const buttonElement = document.createElement('button');
       buttonElement.className = 'vf-message-button';
       buttonElement.textContent = button.name;
       buttonElement.addEventListener('click', function () {
+        // Bei Klick -> Chat wird genutzt
+        setUsedChatAttribute(); // <--- NEU
         addUserMessage(button.name);
         console.log('Button clicked:', button);
         if (button.request.payload.actions) {
@@ -401,4 +406,3 @@ document.addEventListener('DOMContentLoaded', function () {
   console.log("vfSendLaunch - Launch-Payload:", launchPayload);
   vfSendLaunch(launchPayload);
 });
-
