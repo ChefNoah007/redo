@@ -165,7 +165,7 @@ export default function Index() {
       const dayEnd = new Date(dayStart);
       dayEnd.setHours(23, 59, 59, 999);
       try {
-        const response = await fetch("https://redo-ia4o.onrender.com/daily-data", {
+        const response = await fetch("/daily-data", {
           method: "GET", // GET-Anfrage
         });
         if (!response.ok) {
