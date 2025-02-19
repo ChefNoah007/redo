@@ -1,33 +1,38 @@
-// tracking.js
-
-import { register } from '@shopify/web-pixels-extension';
-
 register(({ analytics }) => {
-  analytics.subscribe('checkout_completed', (event) => {
-    const checkout = event.data.checkout;
-    const transactionId = checkout.order?.id;
-    const total = checkout.totalPrice?.amount;
-    const currency = checkout.currencyCode;
+    analytics.subscribe("checkout_completed", (event) => {
+        console.log("Checkout Order Data:", event.data.checkout.order);
 
-    // Prüfen, ob das Cookie "chatInteracted=true" enthalten ist
-    let chatInteracted = false;
-    if (typeof document !== "undefined") {
-      // Simpler Check: Enthält der document.cookie-String "chatInteracted=true"?
-      chatInteracted = document.cookie.includes("chatInteracted=true");
-    }
-
-    fetch('https://redo-ia4o.onrender.com/track', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        transaction_id: transactionId,
-        total,
-        currency,
-        chatInteracted, // <-- hier senden wir ein zusätzliches Feld
-      }),
-      keepalive: true
+      const checkout = event.data.checkout;
+      const transactionId = checkout.order?.id;
+      const total = checkout.totalPrice?.amount;
+      const currency = checkout.currencyCode;
+  
+      // Vorher hast du hier das Cookie geprüft:
+      // let usedChat = document.cookie.includes("chatInteracted=true");
+  
+      // NEU: Statt Cookie -> Cart-Attribut (noteAttributes)
+      let usedChat = false;
+      const noteAttributes = checkout.order?.noteAttributes || [];
+      // noteAttributes ist ein Array [{ name: "usedChat", value: "true" }, ...]
+  
+      for (const attr of noteAttributes) {
+        if (attr.name === "usedChat" && attr.value === "true") {
+          usedChat = true;
+        }
+      }
+  
+      // Dann deinen Tracking-Call an dein Backend
+      fetch("https://redo-ia4o.onrender.com/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transaction_id: transactionId,
+          total,
+          currency,
+          usedChat,
+        }),
+        keepalive: true,
+      });
     });
   });
-});
+  
