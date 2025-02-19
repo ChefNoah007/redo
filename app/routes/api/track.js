@@ -1,8 +1,7 @@
-// app/routes/api/track.server.js
+// track.js
 import { json } from "@remix-run/node";
 import mongoose from "mongoose";
 
-// Stelle sicher, dass du die MongoDB-Verbindung nur einmal aufbaust.
 if (!mongoose.connection.readyState) {
   mongoose.connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
@@ -10,24 +9,31 @@ if (!mongoose.connection.readyState) {
   });
 }
 
-// Definiere das Schema für Tracking-Daten
 const trackingSchema = new mongoose.Schema({
   transaction_id: String,
   total: Number,
   currency: String,
+  chatInteracted: Boolean, // <-- neues Feld
   createdAt: { type: Date, default: Date.now },
 });
 
-// Vermeide Mehrfach-Definitionen, indem du prüfst, ob das Model bereits existiert.
+// Prüfen, ob Model schon existiert:
 const Tracking = mongoose.models.Tracking || mongoose.model("Tracking", trackingSchema);
 
-// Exportiere ausschließlich serverseitige Funktionen (kein Default Export!)
-// Remix behandelt diese Route dann als API-Route, die nur auf dem Server läuft.
+// Serverseitige Funktion 
 export async function action({ request }) {
   try {
     const data = await request.json();
     console.log("Tracking-Daten empfangen:", data);
-    const trackingEvent = new Tracking(data);
+
+    // Speichere die übergebenen Felder in Mongo
+    const trackingEvent = new Tracking({
+      transaction_id: data.transaction_id,
+      total: data.total,
+      currency: data.currency,
+      chatInteracted: data.chatInteracted,  // <-- hier übernehmen
+    });
+
     await trackingEvent.save();
     return json({ message: "Tracking-Daten empfangen" });
   } catch (error) {

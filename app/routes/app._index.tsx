@@ -1,3 +1,5 @@
+//_index.tsx
+
 import { useEffect, useState } from "react";
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { useFetcher } from "@remix-run/react";
