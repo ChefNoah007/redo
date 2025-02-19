@@ -1,4 +1,4 @@
-//_index.tsx
+// app/routes/_index.tsx
 
 import { useEffect, useState } from "react";
 import type { LoaderFunctionArgs } from "@remix-run/node";
@@ -36,6 +36,7 @@ ChartJS.register(
   Legend
 );
 
+// Falls du Keys/IDs für andere Proxys verwendest, kannst du sie hier behalten
 const API_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
 const PROJECT_ID = "6703af9afcd0ea507e9c5369";
 
@@ -83,6 +84,7 @@ const calculateTimeRange = (timeRange: string): { startTime: string; endTime: st
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  // Schutz vor unautorisiertem Zugriff
   await authenticate.admin(request);
   return null;
 };
@@ -99,6 +101,9 @@ export default function Index() {
   const [cachedData, setCachedData] = useState<Record<string, DailyInteractionData[]>>({});
   const [cachedRevenue, setCachedRevenue] = useState<Record<string, DailyRevenueData[]>>({});
 
+  /**
+   *  1) Interactions (externe Voiceflow-Proxys / dein Chat-API)
+   */
   const fetchDailyInteractions = async (selectedTimeRange: string) => {
     if (cachedData[selectedTimeRange]) {
       console.log(`Using cached interactions for ${selectedTimeRange}`);
@@ -107,12 +112,15 @@ export default function Index() {
     const days = parseInt(selectedTimeRange.replace("d", ""));
     const now = new Date();
     const dailyData: DailyInteractionData[] = [];
+
     for (let i = 0; i < days; i++) {
       const dayStart = new Date(now);
       dayStart.setHours(0, 0, 0, 0);
       dayStart.setDate(dayStart.getDate() - i);
+
       const dayEnd = new Date(dayStart);
       dayEnd.setHours(23, 59, 59, 999);
+
       try {
         const response = await fetch("https://redo-ia4o.onrender.com/proxy", {
           method: "POST",
@@ -136,62 +144,81 @@ export default function Index() {
           throw new Error(`Error: ${response.status} - ${errorText}`);
         }
         const data: ApiResult = await response.json();
-        const localDate = new Date(dayStart);
         dailyData.push({
-          date: localDate.toISOString().split("T")[0],
+          date: dayStart.toISOString().split("T")[0],
           count: data.result[0]?.count || 0,
         });
       } catch (error) {
         console.error(`Error fetching interactions for ${dayStart.toISOString()}:`, error);
       }
     }
+
+    // Array umdrehen, damit die ältesten Daten zuerst stehen
     const reversedData = dailyData.reverse();
     setCachedData((prev) => ({ ...prev, [selectedTimeRange]: reversedData }));
     return reversedData;
   };
 
+  /**
+   * 2) Revenue (über deine Mongoose-Resource-Route /daily-data)
+   *    Achtung: hier schickst du pro Tag einen GET-Request an dieselbe Route.
+   *    Das ist OK zum Testen, aber oft würde man lieber EINE Abfrage machen.
+   */
   const fetchDailyRevenue = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
     if (cachedRevenue[selectedTimeRange]) {
       console.log(`Using cached revenue data for ${selectedTimeRange}`);
       return cachedRevenue[selectedTimeRange];
     }
+
     const days = parseInt(selectedTimeRange.replace("d", ""));
     const now = new Date();
     const revenueData: DailyRevenueData[] = [];
+
     for (let i = 0; i < days; i++) {
       const dayStart = new Date(now);
       dayStart.setHours(0, 0, 0, 0);
       dayStart.setDate(dayStart.getDate() - i);
+
       const dayEnd = new Date(dayStart);
       dayEnd.setHours(23, 59, 59, 999);
+
       try {
+        // Hier rufst du deine Resource Route auf (GET /daily-data)
         const response = await fetch("/daily-data", {
-          method: "GET", // GET-Anfrage
+          method: "GET",
         });
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`Error: ${response.status} - ${errorText}`);
         }
         const data: { dailyRevenue: DailyRevenueData[] } = await response.json();
-        // Verwende einen leeren Array, falls data.dailyRevenue undefined ist
         revenueData.push(...(data.dailyRevenue ?? []));
       } catch (error) {
         console.error(`Error fetching revenue for ${dayStart.toISOString()}:`, error);
       }
     }
+
+    // Ebenfalls invertieren
     const reversedData = revenueData.reverse();
     setCachedRevenue((prev) => ({ ...prev, [selectedTimeRange]: reversedData }));
     return reversedData;
   };
-  
 
+  /**
+   * 3) Zusammengefasstes Laden aller Dashboard-Daten
+   */
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
     try {
+      // 3.1) Chat Interactions
       const dailyInteractionsData = await fetchDailyInteractions(selectedTimeRange);
       setDailyInteractions(dailyInteractionsData);
+
+      // 3.2) Revenue
       const dailyRevenueData = await fetchDailyRevenue(selectedTimeRange);
       setDailyRevenue(dailyRevenueData);
+
+      // 3.3) Voiceflow-Daten (Sessions, Intents, uniqueUsers) via "proxy"
       const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
       const response = await fetch("https://redo-ia4o.onrender.com/proxy", {
         method: "POST",
@@ -234,8 +261,12 @@ export default function Index() {
         throw new Error(`Error: ${response.status} - ${errorText}`);
       }
       const data: ApiResult = await response.json();
+
+      // Sessions
       setSessions(data.result[0]?.count || 0);
+      // Top Intents
       setTopIntents(data.result[1]?.intents || []);
+      // Unique Users
       setUniqueUsers(data.result[2]?.count || 0);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -244,10 +275,13 @@ export default function Index() {
     }
   };
 
+  // Bei jedem Wechsel des Time-Range (z.B. 7d, 30d) -> Daten neu laden
   useEffect(() => {
     fetchDashboardData(timeRange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
+  // Labels für die Charts
   const dynamicLabels =
     dailyInteractions?.map((entry) => {
       const date = new Date(entry.date);
@@ -259,6 +293,7 @@ export default function Index() {
       });
     }) || [];
 
+  // Daten für die beiden Linien (interactionsData & revenueData)
   const interactionsData = dailyInteractions?.map((entry) => entry.count) || [];
   const revenueData = dailyRevenue?.map((entry) => entry.revenue) || [];
 
@@ -322,7 +357,7 @@ export default function Index() {
           </Card>
         </Layout.Section>
 
-        {/* Weitere Diagramme können hier ergänzt werden */}
+        {/* Weitere Diagramme etc. */}
         <Layout.Section variant="oneHalf">
           <Card>
             <Text as="h3" variant="headingMd">

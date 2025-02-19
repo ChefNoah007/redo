@@ -47,7 +47,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['react-chartjs-2', 'chart.js'],
+    include: ["react-chartjs-2", "chart.js"],
   },
   plugins: [
     remix({
@@ -63,7 +63,14 @@ export default defineConfig({
     }),
     tsconfigPaths(),
   ],
+
   build: {
     assetsInlineLimit: 0,
+
+    // Hier mongoose als "external" markieren,
+    // damit es nicht in den Client-Bundle gepackt wird.
+    rollupOptions: {
+      external: ["mongoose"],
+    },
   },
 }) satisfies UserConfig;
