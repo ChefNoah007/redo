@@ -1,7 +1,6 @@
-// app/routes/_index.tsx
-
 import { useEffect, useState } from "react";
 import type { LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { useFetcher } from "@remix-run/react";
 import {
   Page,
@@ -12,12 +11,12 @@ import {
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 import {
-  BarElement,
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -25,6 +24,7 @@ import {
 import { Line, Bar } from "react-chartjs-2";
 import { authenticate } from "../shopify.server";
 
+// ChartJS Setup
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -36,18 +36,28 @@ ChartJS.register(
   Legend
 );
 
-// Falls du Keys/IDs für andere Proxys verwendest, kannst du sie hier behalten
+// Voiceflow/Proxy keys
 const API_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
 const PROJECT_ID = "6703af9afcd0ea507e9c5369";
 
+// Typen für Voiceflow
 interface IntentData {
   name: string;
   count: number;
 }
 
+// Typen für deine Chat Interactions
 interface DailyInteractionData {
   date: string;
   count: number;
+}
+
+// Typen für Orders
+interface ChatOrder {
+  id: number;
+  created_at: string;
+  total_price: string;
+  // ... evtl. mehr Felder
 }
 
 interface DailyRevenueData {
@@ -55,19 +65,16 @@ interface DailyRevenueData {
   revenue: number;
 }
 
+// Voiceflow/Proxy Ergebnis
 interface ApiResult {
   result: Array<{
     count?: number;
     intents?: IntentData[];
-    dailyInteractions?: DailyInteractionData[];
-    dailyRevenue?: DailyRevenueData[];
-    averageSessionDuration?: number;
-    messagesExchanged?: number;
-    errorRate?: number;
-    newUsers?: number;
+    // ...
   }>;
 }
 
+// Zeitfenster (du hast sie als "7d", "30d"... wir können das so lassen)
 const timeRanges = [
   { label: "Last 7 Days", value: "7d" },
   { label: "Last Month", value: "30d" },
@@ -76,40 +83,49 @@ const timeRanges = [
   { label: "Last 12 Months", value: "365d" },
 ];
 
-const calculateTimeRange = (timeRange: string): { startTime: string; endTime: string } => {
+// Hilfsfunktion: extrahiert aus "7d" den Integer 7, etc.
+function parseDays(timeRange: string): number {
+  return parseInt(timeRange.replace("d", ""), 10);
+}
+
+function calculateTimeRange(timeRange: string): { startTime: string; endTime: string } {
   const now = new Date();
   const endTime = now.toISOString();
-  const startTime = new Date(now.getTime() - parseInt(timeRange) * 24 * 60 * 60 * 1000).toISOString();
+  const days = parseDays(timeRange);
+  const startTime = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
   return { startTime, endTime };
-};
+}
 
+// Nur eingeloggte Admins reinlassen
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  // Schutz vor unautorisiertem Zugriff
   await authenticate.admin(request);
   return null;
 };
 
 export default function Index() {
-  const fetcher = useFetcher();
   const [uniqueUsers, setUniqueUsers] = useState<number | null>(null);
   const [topIntents, setTopIntents] = useState<IntentData[] | null>(null);
   const [sessions, setSessions] = useState<number | null>(null);
+
   const [dailyInteractions, setDailyInteractions] = useState<DailyInteractionData[] | null>(null);
   const [dailyRevenue, setDailyRevenue] = useState<DailyRevenueData[] | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<string>("7d");
+
+  // Um bereits geladene Daten zu cachen
   const [cachedData, setCachedData] = useState<Record<string, DailyInteractionData[]>>({});
   const [cachedRevenue, setCachedRevenue] = useState<Record<string, DailyRevenueData[]>>({});
 
   /**
-   *  1) Interactions (externe Voiceflow-Proxys / dein Chat-API)
+   * 1) fetchDailyInteractions => Voiceflow Interactions
    */
   const fetchDailyInteractions = async (selectedTimeRange: string) => {
     if (cachedData[selectedTimeRange]) {
       console.log(`Using cached interactions for ${selectedTimeRange}`);
       return cachedData[selectedTimeRange];
     }
-    const days = parseInt(selectedTimeRange.replace("d", ""));
+    const days = parseDays(selectedTimeRange);
     const now = new Date();
     const dailyData: DailyInteractionData[] = [];
 
@@ -117,9 +133,6 @@ export default function Index() {
       const dayStart = new Date(now);
       dayStart.setHours(0, 0, 0, 0);
       dayStart.setDate(dayStart.getDate() - i);
-
-      const dayEnd = new Date(dayStart);
-      dayEnd.setHours(23, 59, 59, 999);
 
       try {
         const response = await fetch("https://redo-ia4o.onrender.com/proxy", {
@@ -132,7 +145,7 @@ export default function Index() {
                 filter: {
                   projectID: PROJECT_ID,
                   startTime: dayStart.toISOString(),
-                  endTime: dayEnd.toISOString(),
+                  endTime: new Date(dayStart).setHours(23, 59, 59, 999), // optional
                   platform: { not: "canvas-prototype" },
                 },
               },
@@ -153,55 +166,82 @@ export default function Index() {
       }
     }
 
-    // Array umdrehen, damit die ältesten Daten zuerst stehen
+    // Ältester Tag zuerst
     const reversedData = dailyData.reverse();
-    setCachedData((prev) => ({ ...prev, [selectedTimeRange]: reversedData }));
+    setCachedData(prev => ({ ...prev, [selectedTimeRange]: reversedData }));
     return reversedData;
   };
 
   /**
-   * 2) Revenue (über deine Mongoose-Resource-Route /daily-data)
-   *    Achtung: hier schickst du pro Tag einen GET-Request an dieselbe Route.
-   *    Das ist OK zum Testen, aber oft würde man lieber EINE Abfrage machen.
+   * 2) fetchDailyRevenue -> NEU via /orders
+   *    (statt /daily-data, holen wir Chat-Orders und aggregieren lokal)
    */
-  const fetchDailyRevenue = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
+  const fetchDailyRevenueFromOrders = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
     if (cachedRevenue[selectedTimeRange]) {
-      console.log(`Using cached revenue data for ${selectedTimeRange}`);
+      console.log(`Using cached revenue for ${selectedTimeRange}`);
       return cachedRevenue[selectedTimeRange];
     }
 
-    const days = parseInt(selectedTimeRange.replace("d", ""));
+    const days = parseDays(selectedTimeRange);
     const now = new Date();
-    const revenueData: DailyRevenueData[] = [];
+    const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-    for (let i = 0; i < days; i++) {
-      const dayStart = new Date(now);
-      dayStart.setHours(0, 0, 0, 0);
-      dayStart.setDate(dayStart.getDate() - i);
-
-      const dayEnd = new Date(dayStart);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      try {
-        // Hier rufst du deine Resource Route auf (GET /daily-data)
-        const response = await fetch("/daily-data", {
-          method: "GET",
-        });
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Error: ${response.status} - ${errorText}`);
-        }
-        const data: { dailyRevenue: DailyRevenueData[] } = await response.json();
-        revenueData.push(...(data.dailyRevenue ?? []));
-      } catch (error) {
-        console.error(`Error fetching revenue for ${dayStart.toISOString()}:`, error);
+    try {
+      // 1) Hol alle Chat-Orders (usedChat = true)
+      const res = await fetch("/orders");
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`Error fetching orders: ${res.status} - ${txt}`);
       }
-    }
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || "Unknown /orders error");
+      }
 
-    // Ebenfalls invertieren
-    const reversedData = revenueData.reverse();
-    setCachedRevenue((prev) => ({ ...prev, [selectedTimeRange]: reversedData }));
-    return reversedData;
+      // data.chatOrders => Array mit { created_at, total_price, ...}
+      const chatOrders = data.chatOrders || [];
+
+      // 2) Filtern auf das Zeitfenster
+      const filtered = chatOrders.filter((order: any) => {
+        const createdAt = new Date(order.created_at);
+        return createdAt >= start && createdAt <= now;
+      });
+
+      // 3) Pro Tag summieren
+      const revenueByDay: Record<string, number> = {};
+      for (const order of filtered) {
+        const createdAt = new Date(order.created_at);
+        const dayStr = createdAt.toISOString().split("T")[0];
+        const price = parseFloat(order.total_price || "0");
+        if (!revenueByDay[dayStr]) {
+          revenueByDay[dayStr] = 0;
+        }
+        revenueByDay[dayStr] += price;
+      }
+
+      // 4) Array bauen, alle Tage im Zeitfenster
+      const dailyArray: DailyRevenueData[] = [];
+      for (let i = 0; i < days; i++) {
+        const d = new Date(now);
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - i);
+        const iso = d.toISOString().split("T")[0];
+
+        dailyArray.push({
+          date: iso,
+          revenue: revenueByDay[iso] || 0,
+        });
+      }
+
+      // Umdrehen (ältester zuerst)
+      dailyArray.reverse();
+
+      setCachedRevenue(prev => ({ ...prev, [selectedTimeRange]: dailyArray }));
+      return dailyArray;
+    } catch (err) {
+      console.error("Error fetching dailyRevenueFromOrders:", err);
+      return [];
+    }
   };
 
   /**
@@ -210,15 +250,15 @@ export default function Index() {
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
     try {
-      // 3.1) Chat Interactions
+      // 3.1) Voiceflow Chat Interactions
       const dailyInteractionsData = await fetchDailyInteractions(selectedTimeRange);
       setDailyInteractions(dailyInteractionsData);
 
-      // 3.2) Revenue
-      const dailyRevenueData = await fetchDailyRevenue(selectedTimeRange);
+      // 3.2) Chat-Orders als Revenue
+      const dailyRevenueData = await fetchDailyRevenueFromOrders(selectedTimeRange);
       setDailyRevenue(dailyRevenueData);
 
-      // 3.3) Voiceflow-Daten (Sessions, Intents, uniqueUsers) via "proxy"
+      // 3.3) Voiceflow: Sessions, Intents, Unique Users
       const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
       const response = await fetch("https://redo-ia4o.onrender.com/proxy", {
         method: "POST",
@@ -262,12 +302,10 @@ export default function Index() {
       }
       const data: ApiResult = await response.json();
 
-      // Sessions
       setSessions(data.result[0]?.count || 0);
-      // Top Intents
       setTopIntents(data.result[1]?.intents || []);
-      // Unique Users
       setUniqueUsers(data.result[2]?.count || 0);
+
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -275,16 +313,20 @@ export default function Index() {
     }
   };
 
-  // Bei jedem Wechsel des Time-Range (z.B. 7d, 30d) -> Daten neu laden
+  // Jedes Mal, wenn timeRange ändert -> fetchDashboardData
   useEffect(() => {
     fetchDashboardData(timeRange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
-  // Labels für die Charts
+  /**
+   * Labels für die Charts 
+   * -> dailyInteractions, dailyRevenue
+   */
   const dynamicLabels =
     dailyInteractions?.map((entry) => {
       const date = new Date(entry.date);
+      // add +1 Tag, je nachdem wie du's anzeigen willst:
       date.setDate(date.getDate() + 1);
       return date.toLocaleDateString("de-DE", {
         day: "2-digit",
@@ -293,10 +335,13 @@ export default function Index() {
       });
     }) || [];
 
-  // Daten für die beiden Linien (interactionsData & revenueData)
+  // Chat Interactions
   const interactionsData = dailyInteractions?.map((entry) => entry.count) || [];
+
+  // usedChat Orders Revenue
   const revenueData = dailyRevenue?.map((entry) => entry.revenue) || [];
 
+  // ChartJS Data
   const lineChartData = {
     labels: dynamicLabels,
     datasets: [
@@ -357,7 +402,7 @@ export default function Index() {
           </Card>
         </Layout.Section>
 
-        {/* Weitere Diagramme etc. */}
+        {/* Weitere Diagramme, z.B. Sessions and Users, Top Intents */}
         <Layout.Section variant="oneHalf">
           <Card>
             <Text as="h3" variant="headingMd">
@@ -366,6 +411,7 @@ export default function Index() {
             <Line data={lineChartData} options={lineChartOptions} />
           </Card>
         </Layout.Section>
+
         <Layout.Section variant="oneHalf">
           <Card>
             <Text as="h3" variant="headingMd">
