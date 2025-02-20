@@ -8,6 +8,27 @@ export const action = async ({ request }) => {
   try {
     const body = await request.json();
 
+    // Überprüfe, ob "resources" existiert und mindestens ein Element enthält.
+    if (
+      !body.resources ||
+      !Array.isArray(body.resources) ||
+      body.resources.length === 0
+    ) {
+      // Falls stattdessen "query" vorhanden ist, konvertieren wir diesen Schlüssel in "resources".
+      if (
+        body.query &&
+        Array.isArray(body.query) &&
+        body.query.length > 0
+      ) {
+        body.resources = body.query;
+        delete body.query;
+      } else {
+        throw new Error(
+          "Validation failed: 'resources' array must contain at least 1 element."
+        );
+      }
+    }
+
     const response = await fetch(VOICEFLOW_API_USAGE_URL, {
       method: "POST",
       headers: {
