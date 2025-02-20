@@ -246,15 +246,15 @@ export default function Index() {
   }, [timeRange]);
 
   const dynamicLabels =
-    dailyInteractions?.map((entry) => {
-      const date = new Date(entry.date);
-      date.setDate(date.getDate() + 1);
-      return date.toLocaleDateString("de-DE", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "2-digit",
-      });
-    }) || [];
+  dailyInteractions?.map((entry) => {
+    // Kein "date.setDate(date.getDate() + 1)" mehr
+    return new Date(entry.date).toLocaleDateString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    });
+  }) || [];
+
 
   const interactionsData = dailyInteractions?.map((entry) => entry.count) || [];
   const revenueData = dailyRevenue?.map((entry) => entry.revenue) || [];
