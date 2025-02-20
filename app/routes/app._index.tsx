@@ -250,46 +250,51 @@ export default function Index() {
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
     try {
+      // 3.1) Voiceflow Chat Interactions
+      const dailyInteractionsData = await fetchDailyInteractions(selectedTimeRange);
+      setDailyInteractions(dailyInteractionsData);
+
+      // 3.2) Chat-Orders als Revenue
+      const dailyRevenueData = await fetchDailyRevenueFromOrders(selectedTimeRange);
+      setDailyRevenue(dailyRevenueData);
+
+      // 3.3) Voiceflow: Sessions, Intents, Unique Users
       const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
-      const query = [
-        {
-          name: "sessions",
-          filter: {
-            projectID: PROJECT_ID,
-            startTime,
-            endTime,
-            platform: { not: "canvas-prototype" },
-          },
-        },
-        {
-          name: "top_intents",
-          filter: {
-            projectID: PROJECT_ID,
-            limit: 5,
-            startTime,
-            endTime,
-            platform: { not: "canvas-prototype" },
-          },
-        },
-        {
-          name: "unique_users",
-          filter: {
-            projectID: PROJECT_ID,
-            startTime,
-            endTime,
-            platform: { not: "canvas-prototype" },
-          },
-        },
-      ];
-
-      if (query.length === 0) {
-        throw new Error("Query array must contain at least one element");
-      }
-
       const response = await fetch("https://redo-ia4o.onrender.com/proxy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({
+          query: [
+            {
+              name: "sessions",
+              filter: {
+                projectID: PROJECT_ID,
+                startTime,
+                endTime,
+                platform: { not: "canvas-prototype" },
+              },
+            },
+            {
+              name: "top_intents",
+              filter: {
+                projectID: PROJECT_ID,
+                limit: 5,
+                startTime,
+                endTime,
+                platform: { not: "canvas-prototype" },
+              },
+            },
+            {
+              name: "unique_users",
+              filter: {
+                projectID: PROJECT_ID,
+                startTime,
+                endTime,
+                platform: { not: "canvas-prototype" },
+              },
+            },
+          ],
+        }),
       });
       if (!response.ok) {
         const errorText = await response.text();
