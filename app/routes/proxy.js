@@ -1,3 +1,5 @@
+// app/routes/proxy.js
+
 import { json } from "@remix-run/node";
 
 // POST /proxy

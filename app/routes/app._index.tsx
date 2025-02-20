@@ -1,3 +1,5 @@
+// app/routes/_index.tsx
+
 import { useEffect, useState } from "react";
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { useFetcher } from "@remix-run/react";
@@ -34,7 +36,6 @@ ChartJS.register(
   Legend
 );
 
-// Voiceflow/Proxy keys
 const API_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
 const PROJECT_ID = "6703af9afcd0ea507e9c5369";
 
@@ -57,15 +58,13 @@ interface ApiResult {
   result: Array<{
     count?: number;
     intents?: IntentData[];
-    // weitere Felder möglich
+    dailyInteractions?: DailyInteractionData[];
+    dailyRevenue?: DailyRevenueData[];
+    averageSessionDuration?: number;
+    messagesExchanged?: number;
+    errorRate?: number;
+    newUsers?: number;
   }>;
-}
-
-interface ChatOrder {
-  id: number;
-  created_at: string;
-  total_price: string;
-  // ggf. weitere Felder
 }
 
 const timeRanges = [
@@ -76,18 +75,12 @@ const timeRanges = [
   { label: "Last 12 Months", value: "365d" },
 ];
 
-// Hilfsfunktion: extrahiere Zahl aus "7d"
-function parseDays(timeRange: string): number {
-  return parseInt(timeRange.replace("d", ""), 10);
-}
-
-function calculateTimeRange(timeRange: string): { startTime: string; endTime: string } {
+const calculateTimeRange = (timeRange: string): { startTime: string; endTime: string } => {
   const now = new Date();
   const endTime = now.toISOString();
-  const days = parseDays(timeRange);
-  const startTime = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+  const startTime = new Date(now.getTime() - parseInt(timeRange) * 24 * 60 * 60 * 1000).toISOString();
   return { startTime, endTime };
-}
+};
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
@@ -95,6 +88,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function Index() {
+  const fetcher = useFetcher();
   const [uniqueUsers, setUniqueUsers] = useState<number | null>(null);
   const [topIntents, setTopIntents] = useState<IntentData[] | null>(null);
   const [sessions, setSessions] = useState<number | null>(null);
@@ -105,16 +99,13 @@ export default function Index() {
   const [cachedData, setCachedData] = useState<Record<string, DailyInteractionData[]>>({});
   const [cachedRevenue, setCachedRevenue] = useState<Record<string, DailyRevenueData[]>>({});
 
-  /**
-   * 1) fetchDailyInteractions: Ruft Voiceflow Chat-Interaktionen über den Proxy ab.
-   * Dabei senden wir nun den Schlüssel "resources" (statt "query") entsprechend der Voiceflow-Doku.
-   */
+  // 1) Daily Interactions via den lokalen Proxy
   const fetchDailyInteractions = async (selectedTimeRange: string) => {
     if (cachedData[selectedTimeRange]) {
       console.log(`Using cached interactions for ${selectedTimeRange}`);
       return cachedData[selectedTimeRange];
     }
-    const days = parseDays(selectedTimeRange);
+    const days = parseInt(selectedTimeRange.replace("d", ""));
     const now = new Date();
     const dailyData: DailyInteractionData[] = [];
 
@@ -122,15 +113,16 @@ export default function Index() {
       const dayStart = new Date(now);
       dayStart.setHours(0, 0, 0, 0);
       dayStart.setDate(dayStart.getDate() - i);
+
       const dayEnd = new Date(dayStart);
       dayEnd.setHours(23, 59, 59, 999);
 
       try {
-        const response = await fetch("https://redo-ia4o.onrender.com/proxy", {
+        const response = await fetch("/proxy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            resources: [  // KEY angepasst von "query" zu "resources"
+            query: [
               {
                 name: "interactions",
                 filter: {
@@ -158,95 +150,51 @@ export default function Index() {
     }
 
     const reversedData = dailyData.reverse();
-    setCachedData(prev => ({ ...prev, [selectedTimeRange]: reversedData }));
+    setCachedData((prev) => ({ ...prev, [selectedTimeRange]: reversedData }));
     return reversedData;
   };
 
-  /**
-   * 2) fetchDailyRevenueFromOrders: Holt den Umsatz aus Bestellungen, die im Cart-Attribut usedChat="true" gesetzt sind.
-   * Hier wird der Shop-Parameter dynamisch aus der URL geholt.
-   */
-  const fetchDailyRevenueFromOrders = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
+  // 2) Revenue via den daily-data Endpunkt
+  const fetchDailyRevenue = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
     if (cachedRevenue[selectedTimeRange]) {
       console.log(`Using cached revenue data for ${selectedTimeRange}`);
       return cachedRevenue[selectedTimeRange];
     }
-    const days = parseDays(selectedTimeRange);
-    const now = new Date();
-    const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
     try {
-      const params = new URLSearchParams(window.location.search);
-      const shop = params.get("shop") || "coffee-principles.myshopify.com";
-      console.log("Fetching orders for shop:", shop);
-
-      const res = await fetch(`/orders?shop=${encodeURIComponent(shop)}`, {
+      const response = await fetch("/daily-data", {
         method: "GET",
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Error fetching orders: ${res.status} - ${txt}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error: ${response.status} - ${errorText}`);
       }
-      const data = await res.json();
-      if (!data.success) {
-        throw new Error(data.error || "Unknown /orders error");
-      }
-      const chatOrders: ChatOrder[] = data.chatOrders || [];
-      const filtered = chatOrders.filter((order: any) => {
-        const createdAt = new Date(order.created_at);
-        return createdAt >= start && createdAt <= now;
-      });
-      const revenueByDay: Record<string, number> = {};
-      for (const order of filtered) {
-        const createdAt = new Date(order.created_at);
-        const dayStr = createdAt.toISOString().split("T")[0];
-        const price = parseFloat(order.total_price || "0");
-        revenueByDay[dayStr] = (revenueByDay[dayStr] || 0) + price;
-      }
-      const dailyArray: DailyRevenueData[] = [];
-      for (let i = 0; i < days; i++) {
-        const d = new Date(now);
-        d.setHours(0, 0, 0, 0);
-        d.setDate(d.getDate() - i);
-        const iso = d.toISOString().split("T")[0];
-        dailyArray.push({
-          date: iso,
-          revenue: revenueByDay[iso] || 0,
-        });
-      }
-      dailyArray.reverse();
-      setCachedRevenue(prev => ({ ...prev, [selectedTimeRange]: dailyArray }));
-      return dailyArray;
-    } catch (err) {
-      console.error("Error fetching dailyRevenueFromOrders:", err);
+      const data: { dailyRevenue: DailyRevenueData[] } = await response.json();
+      const reversedData = (data.dailyRevenue || []).reverse();
+      setCachedRevenue((prev) => ({ ...prev, [selectedTimeRange]: reversedData }));
+      return reversedData;
+    } catch (error) {
+      console.error("Error fetching daily revenue:", error);
       return [];
     }
   };
 
-  /**
-   * 3) fetchDashboardData: Lädt alle Dashboard-Daten:
-   * - Voiceflow Chat Interactions
-   * - Shopify Orders Revenue (usedChat)
-   * - Weitere Voiceflow-Daten (Sessions, Top Intents, Unique Users) via Proxy
-   */
+  // 3) Gesamtdaten laden (Analytics, Interactions, Revenue)
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
     try {
-      // Voiceflow Chat Interactions
       const dailyInteractionsData = await fetchDailyInteractions(selectedTimeRange);
       setDailyInteractions(dailyInteractionsData);
 
-      // Shopify Orders Revenue
-      const dailyRevenueData = await fetchDailyRevenueFromOrders(selectedTimeRange);
+      const dailyRevenueData = await fetchDailyRevenue(selectedTimeRange);
       setDailyRevenue(dailyRevenueData);
 
-      // Weitere Voiceflow-Daten via Proxy (Sessions, Top Intents, Unique Users)
       const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
-      const response = await fetch("https://redo-ia4o.onrender.com/proxy", {
+      const response = await fetch("/proxy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          resources: [  // KEY "resources" statt "query"
+          query: [
             {
               name: "sessions",
               filter: {
@@ -283,7 +231,6 @@ export default function Index() {
         throw new Error(`Error: ${response.status} - ${errorText}`);
       }
       const data: ApiResult = await response.json();
-
       setSessions(data.result[0]?.count || 0);
       setTopIntents(data.result[1]?.intents || []);
       setUniqueUsers(data.result[2]?.count || 0);
@@ -296,10 +243,8 @@ export default function Index() {
 
   useEffect(() => {
     fetchDashboardData(timeRange);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
-  // Erzeuge Chart-Labels aus dailyInteractions (optional auch aus dailyRevenue)
   const dynamicLabels =
     dailyInteractions?.map((entry) => {
       const date = new Date(entry.date);
@@ -374,7 +319,6 @@ export default function Index() {
           </Card>
         </Layout.Section>
 
-        {/* Weitere Diagramme, z. B. Sessions/Users und Top Intents */}
         <Layout.Section variant="oneHalf">
           <Card>
             <Text as="h3" variant="headingMd">
