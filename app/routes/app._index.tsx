@@ -154,7 +154,7 @@ export default function Index() {
     return reversedData;
   };
 
-  // 2) Revenue via den daily-data Endpunkt
+  // 2) Revenue via den daily-data Endpunkt mit Übergabe des Zeitbereichs
   const fetchDailyRevenue = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
     if (cachedRevenue[selectedTimeRange]) {
       console.log(`Using cached revenue data for ${selectedTimeRange}`);
@@ -162,7 +162,7 @@ export default function Index() {
     }
 
     try {
-      const response = await fetch("/daily-data", {
+      const response = await fetch(`/daily-data?timeRange=${selectedTimeRange}`, {
         method: "GET",
       });
       if (!response.ok) {
@@ -170,9 +170,9 @@ export default function Index() {
         throw new Error(`Error: ${response.status} - ${errorText}`);
       }
       const data: { dailyRevenue: DailyRevenueData[] } = await response.json();
-      const reversedData = (data.dailyRevenue || []).reverse();
-      setCachedRevenue((prev) => ({ ...prev, [selectedTimeRange]: reversedData }));
-      return reversedData;
+      const revenueData = data.dailyRevenue || [];
+      setCachedRevenue((prev) => ({ ...prev, [selectedTimeRange]: revenueData }));
+      return revenueData;
     } catch (error) {
       console.error("Error fetching daily revenue:", error);
       return [];

@@ -17,7 +17,15 @@ const shopify = shopifyApi({
 
 export async function loader({ request }) {
   try {
-    // Hier ggf. dynamisch ermitteln (z. B. aus der Session)
+    // Lese den Zeitbereich aus der Query, Standard: "7d"
+    const url = new URL(request.url);
+    const timeRangeParam = url.searchParams.get("timeRange") || "7d";
+    const days = parseInt(timeRangeParam.replace("d", ""));
+    
+    const now = new Date();
+    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+    // Shop-Domain (hier ggf. dynamisch ermitteln)
     const shopDomain = "coffee-principles.myshopify.com";
 
     const offlineSessionId = shopify.session.getOfflineId(shopDomain);
@@ -39,41 +47,39 @@ export async function loader({ request }) {
     });
     const allOrders = getResponse.body?.orders || [];
 
-    // Filtern: Nur Bestellungen, bei denen note_attributes usedChat = true enthalten
+    // Filtere Bestellungen: Nur Orders mit note_attributes usedChat = "true" und erstellt nach startDate
     const chatOrders = allOrders.filter((order) => {
-      if (!order.note_attributes) return false;
-      return order.note_attributes.some(
-        (attr) => attr.name === "usedChat" && attr.value === "true"
-      );
+      const orderDate = new Date(order.created_at);
+      return order.note_attributes &&
+        order.note_attributes.some(
+          (attr) => attr.name === "usedChat" && attr.value === "true"
+        ) &&
+        orderDate >= startDate;
     });
 
-    // Aggregiere die tägliche Revenue: Gruppiere nach Erstellungsdatum und summiere den total_price
+    // Aggregiere Umsatz pro Datum
     const revenueByDate = {};
-
     chatOrders.forEach((order) => {
-      const date = new Date(order.created_at).toISOString().split("T")[0];
+      const orderDate = new Date(order.created_at);
+      const dateKey = orderDate.toISOString().split("T")[0];
       const price = parseFloat(order.total_price || "0");
-      if (!revenueByDate[date]) {
-        revenueByDate[date] = 0;
+      if (!revenueByDate[dateKey]) {
+        revenueByDate[dateKey] = 0;
       }
-      revenueByDate[date] += price;
+      revenueByDate[dateKey] += price;
     });
 
-    // Erstelle ein Array von Objekten im Format { date, revenue }
-    const dailyRevenue = Object.keys(revenueByDate)
-      .map((date) => ({
-        date,
-        revenue: revenueByDate[date],
-      }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Erstelle für jeden Tag im Zeitraum einen Eintrag (mit 0, falls keine Daten)
+    const dailyRevenue = [];
+    for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + 1)) {
+      const dateKey = d.toISOString().split("T")[0];
+      dailyRevenue.push({
+        date: dateKey,
+        revenue: revenueByDate[dateKey] || 0,
+      });
+    }
 
-    return json(
-      {
-        dailyRevenue,
-      },
-      { status: 200 }
-    );
-
+    return json({ dailyRevenue }, { status: 200 });
   } catch (error) {
     console.error("Error in daily-data loader:", error);
     return json({ success: false, error: error.message }, { status: 500 });
