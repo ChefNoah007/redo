@@ -91,7 +91,7 @@ export async function loader({ request }) {
     const dailyRevenue = [];
     for (let i = 0; i < days; i++) {  // <-- Hier "i < days" verwenden
       const d = new Date(startDate);
-      d.setDate(d.getDate() + i - 1);  // Einen Tag früher beginnen
+      d.setDate(d.getDate() + i + 1);  // Einen Tag früher beginnen
       const dateKey = d.toISOString().split("T")[0];
       dailyRevenue.push({
         date: dateKey,
