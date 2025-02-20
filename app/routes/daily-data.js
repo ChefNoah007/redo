@@ -87,18 +87,19 @@ export async function loader({ request }) {
     });
     console.log("Aggregated revenue by date:", revenueByDate);
 
-    // Erstelle für jeden Tag im Zeitraum (exakt "days" Einträge) einen Eintrag (mit 0, falls keine Daten)
-    const dailyRevenue = [];
-    for (let i = 0; i < days; i++) {
-      const d = new Date(startDate);
-      d.setDate(d.getDate() + i);
-      const dateKey = d.toISOString().split("T")[0];
-      dailyRevenue.push({
-        date: dateKey,
-        revenue: revenueByDate[dateKey] || 0,
-      });
-    }
-    console.log("Final daily revenue data:", dailyRevenue);
+   // Erstelle für jeden Tag im Zeitraum (einschließlich des aktuellen Tages) einen Eintrag
+const dailyRevenue = [];
+for (let i = 0; i <= days; i++) {  // <= statt <, um den aktuellen Tag mit einzuschließen
+  const d = new Date(startDate);
+  d.setDate(d.getDate() + i);
+  const dateKey = d.toISOString().split("T")[0];
+  dailyRevenue.push({
+    date: dateKey,
+    revenue: revenueByDate[dateKey] || 0,
+  });
+}
+console.log("Final daily revenue data:", dailyRevenue);
+
 
     return json({ dailyRevenue }, { status: 200 });
   } catch (error) {
