@@ -77,8 +77,6 @@ document.head.appendChild(style);
 
 // 3) Haupt-Code:
 document.addEventListener('DOMContentLoaded', function () {
-   // 1) Direkt Attribut setzen (TEST)
-   setUsedChatAttribute();
   // (A) UserID in localStorage
   let userID = localStorage.getItem('VF_UserID');
   if (!userID) {
