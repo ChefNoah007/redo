@@ -10,12 +10,12 @@ import {
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 import {
+  BarElement,
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
-  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -38,7 +38,6 @@ ChartJS.register(
 const API_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
 const PROJECT_ID = "6703af9afcd0ea507e9c5369";
 
-// Typen
 interface IntentData {
   name: string;
   count: number;
@@ -58,7 +57,7 @@ interface ApiResult {
   result: Array<{
     count?: number;
     intents?: IntentData[];
-    // ...
+    // weitere Felder möglich
   }>;
 }
 
@@ -69,7 +68,6 @@ interface ChatOrder {
   // ggf. weitere Felder
 }
 
-// Zeitbereichs-Optionen
 const timeRanges = [
   { label: "Last 7 Days", value: "7d" },
   { label: "Last Month", value: "30d" },
@@ -78,7 +76,7 @@ const timeRanges = [
   { label: "Last 12 Months", value: "365d" },
 ];
 
-// Hilfsfunktion: aus "7d" extrahieren wir die Zahl 7
+// Hilfsfunktion: extrahiere Zahl aus "7d"
 function parseDays(timeRange: string): number {
   return parseInt(timeRange.replace("d", ""), 10);
 }
@@ -92,7 +90,6 @@ function calculateTimeRange(timeRange: string): { startTime: string; endTime: st
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  // Schutz vor unautorisiertem Zugriff
   await authenticate.admin(request);
   return null;
 };
@@ -109,8 +106,8 @@ export default function Index() {
   const [cachedRevenue, setCachedRevenue] = useState<Record<string, DailyRevenueData[]>>({});
 
   /**
-   * 1) Voiceflow Interactions abfragen
-   * Wir senden jetzt den Schlüssel "resources" statt "query"
+   * 1) fetchDailyInteractions: Ruft Voiceflow Chat-Interaktionen über den Proxy ab.
+   * Dabei senden wir nun den Schlüssel "resources" (statt "query") entsprechend der Voiceflow-Doku.
    */
   const fetchDailyInteractions = async (selectedTimeRange: string) => {
     if (cachedData[selectedTimeRange]) {
@@ -133,7 +130,7 @@ export default function Index() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            resources: [
+            resources: [  // KEY angepasst von "query" zu "resources"
               {
                 name: "interactions",
                 filter: {
@@ -166,9 +163,8 @@ export default function Index() {
   };
 
   /**
-   * 2) Umsatzdaten (Revenue) aus Bestellungen über /orders abfragen.
-   * Wir holen hier die Bestellungen, die im Cart-Attribut usedChat="true" markiert sind.
-   * Der Shop-Parameter wird aus der URL geholt.
+   * 2) fetchDailyRevenueFromOrders: Holt den Umsatz aus Bestellungen, die im Cart-Attribut usedChat="true" gesetzt sind.
+   * Hier wird der Shop-Parameter dynamisch aus der URL geholt.
    */
   const fetchDailyRevenueFromOrders = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
     if (cachedRevenue[selectedTimeRange]) {
@@ -180,7 +176,6 @@ export default function Index() {
     const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
     try {
-      // Hole den shop-Parameter aus der URL (falls vorhanden)
       const params = new URLSearchParams(window.location.search);
       const shop = params.get("shop") || "coffee-principles.myshopify.com";
       console.log("Fetching orders for shop:", shop);
@@ -229,7 +224,7 @@ export default function Index() {
   };
 
   /**
-   * 3) Zusammengefasstes Laden aller Dashboard-Daten:
+   * 3) fetchDashboardData: Lädt alle Dashboard-Daten:
    * - Voiceflow Chat Interactions
    * - Shopify Orders Revenue (usedChat)
    * - Weitere Voiceflow-Daten (Sessions, Top Intents, Unique Users) via Proxy
@@ -245,13 +240,13 @@ export default function Index() {
       const dailyRevenueData = await fetchDailyRevenueFromOrders(selectedTimeRange);
       setDailyRevenue(dailyRevenueData);
 
-      // Voiceflow: Sessions, Top Intents, Unique Users
+      // Weitere Voiceflow-Daten via Proxy (Sessions, Top Intents, Unique Users)
       const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
       const response = await fetch("https://redo-ia4o.onrender.com/proxy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          resources: [
+          resources: [  // KEY "resources" statt "query"
             {
               name: "sessions",
               filter: {
@@ -289,7 +284,6 @@ export default function Index() {
       }
       const data: ApiResult = await response.json();
 
-      // Weitere Voiceflow-Daten setzen
       setSessions(data.result[0]?.count || 0);
       setTopIntents(data.result[1]?.intents || []);
       setUniqueUsers(data.result[2]?.count || 0);
@@ -305,11 +299,10 @@ export default function Index() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
-  // Erzeuge Labels aus dailyInteractions (optional kannst du auch dailyRevenue nehmen)
+  // Erzeuge Chart-Labels aus dailyInteractions (optional auch aus dailyRevenue)
   const dynamicLabels =
     dailyInteractions?.map((entry) => {
       const date = new Date(entry.date);
-      // Optionale Anpassung: +1 Tag, falls gewünscht
       date.setDate(date.getDate() + 1);
       return date.toLocaleDateString("de-DE", {
         day: "2-digit",
@@ -318,7 +311,6 @@ export default function Index() {
       });
     }) || [];
 
-  // Daten für die Charts
   const interactionsData = dailyInteractions?.map((entry) => entry.count) || [];
   const revenueData = dailyRevenue?.map((entry) => entry.revenue) || [];
 
@@ -382,7 +374,7 @@ export default function Index() {
           </Card>
         </Layout.Section>
 
-        {/* Weitere Diagramme, z. B. Sessions and Users, Top Intents */}
+        {/* Weitere Diagramme, z. B. Sessions/Users und Top Intents */}
         <Layout.Section variant="oneHalf">
           <Card>
             <Text as="h3" variant="headingMd">

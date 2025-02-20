@@ -6,7 +6,7 @@ import prisma from "../db.server.cjs";
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET,
-  scopes: process.env.SCOPES.split(","), 
+  scopes: process.env.SCOPES.split(","),
   hostName: process.env.SHOPIFY_APP_URL.replace(/^https?:\/\//, ""),
   apiVersion: process.env.SHOPIFY_API_VERSION || LATEST_API_VERSION,
   isEmbeddedApp: true,
@@ -42,7 +42,6 @@ export async function loader({ request }) {
     });
 
     const allOrders = getResponse.body?.orders || [];
-
     const chatOrders = allOrders.filter((order) => {
       if (!order.note_attributes) return false;
       return order.note_attributes.some(
