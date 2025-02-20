@@ -7,8 +7,8 @@ const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET,
   scopes: process.env.SCOPES.split(","), 
-  hostName: process.env.SHOPIFY_APP_URL.replace(/^https?:\/\//, ""), 
-  apiVersion: process.env.SHOPIFY_API_VERSION,  // Korrektur: Jetzt aus .env geladen
+  hostName: process.env.SHOPIFY_APP_URL.replace(/^https?:\/\//, ""),
+  apiVersion: process.env.SHOPIFY_API_VERSION || LATEST_API_VERSION,
   isEmbeddedApp: true,
   sessionStorage: new PrismaSessionStorage(prisma),
 });
@@ -16,24 +16,24 @@ const shopify = shopifyApi({
 export async function loader({ request }) {
   try {
     const url = new URL(request.url);
-    const shopDomain = url.searchParams.get("shop"); // Extrahiere Shop-Domain aus URL
+    const shopDomain = url.searchParams.get("shop");
 
     if (!shopDomain) {
-      return json({ success: false, error: "❌ Fehler: Shop-Domain fehlt in der Anfrage." }, { status: 400 });
+      console.error("❌ Fehler: Shop-Domain fehlt in der Anfrage!");
+      return json({ success: false, error: "Missing shop parameter in request" }, { status: 400 });
     }
 
+    console.log(`🔍 Verarbeite Anfrage für Shop: ${shopDomain}`);
+
     const offlineSessionId = shopify.session.getOfflineId(shopDomain);
-    const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
+    let session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
 
     if (!session) {
-      return json({ 
-        success: false, 
-        error: `❌ Fehler: Keine gültige Offline-Session für ${shopDomain} gefunden.` 
-      }, { status: 401 });
+      console.error(`❌ Keine gültige Offline-Session gefunden für ${shopDomain}`);
+      return json({ success: false, error: `No offline session found for shop ${shopDomain}` }, { status: 401 });
     }
 
     const client = new shopify.clients.Rest({ session });
-
     const getResponse = await client.get({
       path: "orders",
       query: {
@@ -49,6 +49,8 @@ export async function loader({ request }) {
         (attr) => attr.name === "usedChat" && attr.value === "true"
       );
     });
+
+    console.log(`📊 Bestellungen: ${allOrders.length}, Chat-Orders: ${chatOrders.length}`);
 
     return json({
       success: true,
