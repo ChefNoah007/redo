@@ -24,6 +24,7 @@ import {
 import { Line, Bar } from "react-chartjs-2";
 import { authenticate } from "../shopify.server";
 
+// ChartJS Setup
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -51,12 +52,12 @@ interface DailyInteractionData {
   count: number;
 }
 
-// Typen für Orders (die wir von /orders erhalten)
+// Typen für Orders
 interface ChatOrder {
   id: number;
   created_at: string;
   total_price: string;
-  // weitere Felder möglich
+  // ... evtl. mehr Felder
 }
 
 interface DailyRevenueData {
@@ -73,7 +74,7 @@ interface ApiResult {
   }>;
 }
 
-// Zeitfenster (z.B. "7d", "30d", ...)
+// Zeitfenster (du hast sie als "7d", "30d"... wir können das so lassen)
 const timeRanges = [
   { label: "Last 7 Days", value: "7d" },
   { label: "Last Month", value: "30d" },
@@ -82,7 +83,7 @@ const timeRanges = [
   { label: "Last 12 Months", value: "365d" },
 ];
 
-// Hilfsfunktion: aus "7d" extrahieren wir die Zahl 7
+// Hilfsfunktion: extrahiert aus "7d" den Integer 7, etc.
 function parseDays(timeRange: string): number {
   return parseInt(timeRange.replace("d", ""), 10);
 }
@@ -95,8 +96,8 @@ function calculateTimeRange(timeRange: string): { startTime: string; endTime: st
   return { startTime, endTime };
 }
 
+// Nur eingeloggte Admins reinlassen
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  // Schutz vor unautorisiertem Zugriff
   await authenticate.admin(request);
   return null;
 };
@@ -112,13 +113,12 @@ export default function Index() {
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<string>("7d");
 
-  // Caching für bereits geladene Daten
+  // Um bereits geladene Daten zu cachen
   const [cachedData, setCachedData] = useState<Record<string, DailyInteractionData[]>>({});
   const [cachedRevenue, setCachedRevenue] = useState<Record<string, DailyRevenueData[]>>({});
 
   /**
-   * 1) fetchDailyInteractions: Abfrage der Voiceflow Chat Interactions
-   *    Hier wird der POST-Request so angepasst, dass er "resources" statt "query" verwendet.
+   * 1) fetchDailyInteractions => Voiceflow Interactions
    */
   const fetchDailyInteractions = async (selectedTimeRange: string) => {
     if (cachedData[selectedTimeRange]) {
@@ -139,13 +139,13 @@ export default function Index() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            resources: [  // Schlüssel geändert von "query" zu "resources"
+            query: [
               {
                 name: "interactions",
                 filter: {
                   projectID: PROJECT_ID,
                   startTime: dayStart.toISOString(),
-                  endTime: new Date(dayStart).setHours(23, 59, 59, 999),
+                  endTime: new Date(dayStart).setHours(23, 59, 59, 999), // optional
                   platform: { not: "canvas-prototype" },
                 },
               },
@@ -166,14 +166,15 @@ export default function Index() {
       }
     }
 
+    // Ältester Tag zuerst
     const reversedData = dailyData.reverse();
     setCachedData(prev => ({ ...prev, [selectedTimeRange]: reversedData }));
     return reversedData;
   };
 
   /**
-   * 2) fetchDailyRevenueFromOrders: Abfrage der Shopify Orders über die /orders Route
-   *    Wir aggregieren lokal den Umsatz aus Orders, die das Attribut usedChat="true" haben.
+   * 2) fetchDailyRevenue -> NEU via /orders
+   *    (statt /daily-data, holen wir Chat-Orders und aggregieren lokal)
    */
   const fetchDailyRevenueFromOrders = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
     if (cachedRevenue[selectedTimeRange]) {
@@ -186,7 +187,7 @@ export default function Index() {
     const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
     try {
-      // Rufe die Orders-Route auf, die nur Orders mit usedChat zurückgibt.
+      // 1) Hol alle Chat-Orders (usedChat = true)
       const res = await fetch("/orders");
       if (!res.ok) {
         const txt = await res.text();
@@ -197,35 +198,44 @@ export default function Index() {
         throw new Error(data.error || "Unknown /orders error");
       }
 
-      const chatOrders: ChatOrder[] = data.chatOrders || [];
+      // data.chatOrders => Array mit { created_at, total_price, ...}
+      const chatOrders = data.chatOrders || [];
 
-      // Filtere die Orders, die im gewählten Zeitraum liegen.
+      // 2) Filtern auf das Zeitfenster
       const filtered = chatOrders.filter((order: any) => {
         const createdAt = new Date(order.created_at);
         return createdAt >= start && createdAt <= now;
       });
 
-      // Aggregiere pro Tag den Umsatz.
+      // 3) Pro Tag summieren
       const revenueByDay: Record<string, number> = {};
       for (const order of filtered) {
         const createdAt = new Date(order.created_at);
         const dayStr = createdAt.toISOString().split("T")[0];
         const price = parseFloat(order.total_price || "0");
-        revenueByDay[dayStr] = (revenueByDay[dayStr] || 0) + price;
+        if (!revenueByDay[dayStr]) {
+          revenueByDay[dayStr] = 0;
+        }
+        revenueByDay[dayStr] += price;
       }
 
+      // 4) Array bauen, alle Tage im Zeitfenster
       const dailyArray: DailyRevenueData[] = [];
       for (let i = 0; i < days; i++) {
         const d = new Date(now);
         d.setHours(0, 0, 0, 0);
         d.setDate(d.getDate() - i);
         const iso = d.toISOString().split("T")[0];
+
         dailyArray.push({
           date: iso,
           revenue: revenueByDay[iso] || 0,
         });
       }
+
+      // Umdrehen (ältester zuerst)
       dailyArray.reverse();
+
       setCachedRevenue(prev => ({ ...prev, [selectedTimeRange]: dailyArray }));
       return dailyArray;
     } catch (err) {
@@ -235,7 +245,7 @@ export default function Index() {
   };
 
   /**
-   * 3) fetchDashboardData: Lädt alle Dashboard-Daten
+   * 3) Zusammengefasstes Laden aller Dashboard-Daten
    */
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
@@ -244,17 +254,17 @@ export default function Index() {
       const dailyInteractionsData = await fetchDailyInteractions(selectedTimeRange);
       setDailyInteractions(dailyInteractionsData);
 
-      // 3.2) Shopify Orders als Revenue
+      // 3.2) Chat-Orders als Revenue
       const dailyRevenueData = await fetchDailyRevenueFromOrders(selectedTimeRange);
       setDailyRevenue(dailyRevenueData);
 
-      // 3.3) Voiceflow: Sessions, Top Intents, Unique Users via Proxy
+      // 3.3) Voiceflow: Sessions, Intents, Unique Users
       const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
       const response = await fetch("https://redo-ia4o.onrender.com/proxy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          resources: [  // Hier ebenfalls "resources" statt "query"
+          query: [
             {
               name: "sessions",
               filter: {
@@ -295,6 +305,7 @@ export default function Index() {
       setSessions(data.result[0]?.count || 0);
       setTopIntents(data.result[1]?.intents || []);
       setUniqueUsers(data.result[2]?.count || 0);
+
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -302,16 +313,20 @@ export default function Index() {
     }
   };
 
-  // Lade die Dashboard-Daten bei Änderung des Time Range
+  // Jedes Mal, wenn timeRange ändert -> fetchDashboardData
   useEffect(() => {
     fetchDashboardData(timeRange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
-  // Erzeuge Chart-Labels aus dailyInteractions (oder dailyRevenue)
+  /**
+   * Labels für die Charts 
+   * -> dailyInteractions, dailyRevenue
+   */
   const dynamicLabels =
     dailyInteractions?.map((entry) => {
       const date = new Date(entry.date);
+      // add +1 Tag, je nachdem wie du's anzeigen willst:
       date.setDate(date.getDate() + 1);
       return date.toLocaleDateString("de-DE", {
         day: "2-digit",
@@ -320,10 +335,13 @@ export default function Index() {
       });
     }) || [];
 
-  // Daten für die Charts
+  // Chat Interactions
   const interactionsData = dailyInteractions?.map((entry) => entry.count) || [];
+
+  // usedChat Orders Revenue
   const revenueData = dailyRevenue?.map((entry) => entry.revenue) || [];
 
+  // ChartJS Data
   const lineChartData = {
     labels: dynamicLabels,
     datasets: [
@@ -384,7 +402,7 @@ export default function Index() {
           </Card>
         </Layout.Section>
 
-        {/* Weitere Diagramme, z.B. Sessions/Users und Top Intents */}
+        {/* Weitere Diagramme, z.B. Sessions and Users, Top Intents */}
         <Layout.Section variant="oneHalf">
           <Card>
             <Text as="h3" variant="headingMd">
@@ -393,6 +411,7 @@ export default function Index() {
             <Line data={lineChartData} options={lineChartOptions} />
           </Card>
         </Layout.Section>
+
         <Layout.Section variant="oneHalf">
           <Card>
             <Text as="h3" variant="headingMd">
