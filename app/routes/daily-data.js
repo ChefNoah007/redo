@@ -21,9 +21,11 @@ export async function loader({ request }) {
     const url = new URL(request.url);
     const timeRangeParam = url.searchParams.get("timeRange") || "7d";
     const days = parseInt(timeRangeParam.replace("d", ""));
-    
+    console.log("Requested time range (days):", days);
+
     const now = new Date();
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    console.log("Calculated start date:", startDate.toISOString());
 
     // Shop-Domain (hier ggf. dynamisch ermitteln)
     const shopDomain = "coffee-principles.myshopify.com";
@@ -31,6 +33,7 @@ export async function loader({ request }) {
     const offlineSessionId = shopify.session.getOfflineId(shopDomain);
     const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
     if (!session) {
+      console.log(`No offline session found for shop ${shopDomain}`);
       return json(
         { success: false, error: `No offline session found for shop ${shopDomain}` },
         { status: 401 }
@@ -39,6 +42,7 @@ export async function loader({ request }) {
 
     const client = new shopify.clients.Rest({ session });
 
+    // Abrufen aller Bestellungen
     const getResponse = await client.get({
       path: "orders",
       query: {
@@ -46,16 +50,26 @@ export async function loader({ request }) {
       },
     });
     const allOrders = getResponse.body?.orders || [];
+    console.log("Fetched orders count:", allOrders.length);
 
     // Filtere Bestellungen: Nur Orders mit note_attributes usedChat = "true" und erstellt nach startDate
     const chatOrders = allOrders.filter((order) => {
       const orderDate = new Date(order.created_at);
-      return order.note_attributes &&
+      const hasUsedChat =
+        order.note_attributes &&
         order.note_attributes.some(
-          (attr) => attr.name === "usedChat" && attr.value === "true"
-        ) &&
-        orderDate >= startDate;
+          (attr) =>
+            attr.name === "usedChat" &&
+            attr.value === "true"
+        );
+      if (hasUsedChat) {
+        console.log(
+          `Order ${order.id}: created_at=${order.created_at}, total_price=${order.total_price}`
+        );
+      }
+      return hasUsedChat && orderDate >= startDate;
     });
+    console.log("Filtered chat orders count:", chatOrders.length);
 
     // Aggregiere Umsatz pro Datum
     const revenueByDate = {};
@@ -67,7 +81,11 @@ export async function loader({ request }) {
         revenueByDate[dateKey] = 0;
       }
       revenueByDate[dateKey] += price;
+      console.log(
+        `Aggregating order ${order.id} for date ${dateKey}: price=${price}`
+      );
     });
+    console.log("Aggregated revenue by date:", revenueByDate);
 
     // Erstelle für jeden Tag im Zeitraum einen Eintrag (mit 0, falls keine Daten)
     const dailyRevenue = [];
@@ -78,6 +96,7 @@ export async function loader({ request }) {
         revenue: revenueByDate[dateKey] || 0,
       });
     }
+    console.log("Final daily revenue data:", dailyRevenue);
 
     return json({ dailyRevenue }, { status: 200 });
   } catch (error) {
