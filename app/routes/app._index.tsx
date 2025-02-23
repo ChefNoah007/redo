@@ -279,6 +279,29 @@ export default function Index() {
     ],
   };
 
+  // Neue Definition für Daily Revenue Chart (als Bar Chart)
+  const revenueChartData = {
+    labels: dynamicLabels,
+    datasets: [
+      {
+        label: "Daily Revenue (€)",
+        data: revenueData,
+        backgroundColor: "rgba(255, 99, 132, 0.2)",
+        borderColor: "#FF6384",
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const revenueChartOptions = {
+    responsive: true,
+    plugins: {
+      legend: { position: "top" as const },
+      title: { display: true, text: "Daily Revenue" },
+    },
+    scales: { y: { beginAtZero: true } },
+  };
+
   const lineChartOptions = {
     responsive: true,
     plugins: {
@@ -322,11 +345,12 @@ export default function Index() {
         <Layout.Section variant="oneHalf">
           <Card>
             <Text as="h3" variant="headingMd">
-              Sessions and Users
+              Daily Revenue
             </Text>
-            <Line data={lineChartData} options={lineChartOptions} />
+            <Bar data={revenueChartData} options={revenueChartOptions} />
           </Card>
         </Layout.Section>
+
         <Layout.Section variant="oneHalf">
           <Card>
             <Text as="h3" variant="headingMd">
