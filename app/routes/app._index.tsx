@@ -151,8 +151,9 @@ export default function Index() {
         const errorText = await response.text();
         throw new Error(`Error: ${response.status} - ${errorText}`);
       }
-      const data: { dailyRevenue: DailyRevenueData[] } = await response.json();
-      const revenueData = data.dailyRevenue || [];
+      // Hier verwenden wir "dailyData", wie es der Loader in daily-data.js zurückgibt
+      const data: { dailyData: DailyRevenueData[] } = await response.json();
+      const revenueData = data.dailyData || [];
       setCachedRevenue((prev) => ({ ...prev, [selectedTimeRange]: revenueData }));
       return revenueData;
     } catch (error) {
