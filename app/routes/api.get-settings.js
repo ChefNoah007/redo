@@ -56,7 +56,13 @@ export async function loader({ request }) {
       type_here_label: "Tippe hier dein Anliegen ein ...",
       outer_radius: 0,
       chat_bubble_radius: 0,
-      input_button_radius: 0
+      input_button_radius: 0,
+      chat_container_width: "980px",
+      chat_container_padding: 20,
+      chat_container_margin: 20,
+      container_box_shadow: "0px 0px 200px rgba(0, 0, 0, 0.2)",
+      font_family: "Assistant, sans-serif",
+      font_size: 16
     };
   }
   

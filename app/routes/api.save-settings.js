@@ -78,7 +78,6 @@ export async function action({ request }) {
   
     console.log("Update Response Body:", updateResponse.body);
     
-    // Prüfe, ob updateResponse.body.metafield vorhanden ist
     if (updateResponse.body && updateResponse.body.metafield) {
       return json({ success: true, data: updateResponse.body });
     } else {
