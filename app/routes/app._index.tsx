@@ -44,7 +44,7 @@ interface IntentData {
   count: number;
 }
 
-interface DailyTranscriptData {
+interface DailyInteractionData {
   date: string;
   count: number;
 }
@@ -58,7 +58,7 @@ interface ApiResult {
   result: Array<{
     count?: number;
     intents?: IntentData[];
-    dailyTranscripts?: DailyTranscriptData[];
+    dailyInteractions?: DailyInteractionData[];
     dailyRevenue?: DailyRevenueData[];
     averageSessionDuration?: number;
     messagesExchanged?: number;
@@ -92,14 +92,14 @@ export default function Index() {
   const [uniqueUsers, setUniqueUsers] = useState<number | null>(null);
   const [topIntents, setTopIntents] = useState<IntentData[] | null>(null);
   const [sessions, setSessions] = useState<number | null>(null);
-  const [dailyTranscripts, setDailyTranscripts] = useState<DailyTranscriptData[] | null>(null);
+  const [dailyInteractions, setDailyInteractions] = useState<DailyInteractionData[] | null>(null);
   const [dailyRevenue, setDailyRevenue] = useState<DailyRevenueData[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<string>("7d");
-  const [cachedData, setCachedData] = useState<Record<string, DailyTranscriptData[]>>({});
+  const [cachedData, setCachedData] = useState<Record<string, DailyInteractionData[]>>({});
   const [cachedRevenue, setCachedRevenue] = useState<Record<string, DailyRevenueData[]>>({});
 
-  // 1) Tägliche Transcripts via lokalen Proxy abrufen
+  // 1) Daily Transcripts via den Proxy (jetzt zählt /proxy die Transkripte pro Tag)
   const fetchDailyTranscripts = async (selectedTimeRange: string) => {
     if (cachedData[selectedTimeRange]) {
       console.log(`Using cached transcripts for ${selectedTimeRange}`);
@@ -107,50 +107,33 @@ export default function Index() {
     }
     const days = parseInt(selectedTimeRange.replace("d", ""));
     const now = new Date();
-    const dailyData: DailyTranscriptData[] = [];
+    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-    for (let i = 0; i < days; i++) {
-      const dayStart = new Date(now);
-      dayStart.setHours(0, 0, 0, 0);
-      dayStart.setDate(dayStart.getDate() - i);
-
-      const dayEnd = new Date(dayStart);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      try {
-        const response = await fetch("/proxy", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query: [
-              {
-                name: "transcripts", // Hier wird nun die Transcript-Zahl abgefragt
-                filter: {
-                  projectID: PROJECT_ID,
-                  startTime: dayStart.toISOString(),
-                  endTime: dayEnd.toISOString(),
-                },
-              },
-            ],
-          }),
-        });
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Error: ${response.status} - ${errorText}`);
-        }
-        const data: ApiResult = await response.json();
-        dailyData.push({
-          date: dayStart.toISOString().split("T")[0],
-          count: data.result[0]?.count || 0,
-        });
-      } catch (error) {
-        console.error(`Error fetching transcripts for ${dayStart.toISOString()}:`, error);
+    try {
+      const response = await fetch(`/proxy?timeRange=${selectedTimeRange}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error: ${response.status} - ${errorText}`);
       }
+      const data = await response.json();
+      // Wir erwarten, dass der Proxy transcriptsPerDay zurückgibt
+      const transcriptsPerDay = data.transcriptsPerDay || {};
+      const dailyTranscripts: DailyInteractionData[] = [];
+      for (let i = 0; i < days; i++) {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + i + 1);
+        const dateKey = d.toISOString().split("T")[0];
+        dailyTranscripts.push({ date: dateKey, count: transcriptsPerDay[dateKey] || 0 });
+      }
+      setCachedData((prev) => ({ ...prev, [selectedTimeRange]: dailyTranscripts }));
+      return dailyTranscripts;
+    } catch (error) {
+      console.error("Error fetching daily transcripts:", error);
+      return [];
     }
-
-    const reversedData = dailyData.reverse();
-    setCachedData((prev) => ({ ...prev, [selectedTimeRange]: reversedData }));
-    return reversedData;
   };
 
   // 2) Revenue via den daily-data Endpunkt mit Übergabe des Zeitbereichs
@@ -159,7 +142,6 @@ export default function Index() {
       console.log(`Using cached revenue data for ${selectedTimeRange}`);
       return cachedRevenue[selectedTimeRange];
     }
-
     try {
       const response = await fetch(`/daily-data?timeRange=${selectedTimeRange}`, {
         method: "GET",
@@ -182,8 +164,9 @@ export default function Index() {
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
     try {
+      // Nutze fetchDailyTranscripts anstelle von fetchDailyInteractions
       const dailyTranscriptsData = await fetchDailyTranscripts(selectedTimeRange);
-      setDailyTranscripts(dailyTranscriptsData);
+      setDailyInteractions(dailyTranscriptsData);
 
       const dailyRevenueData = await fetchDailyRevenue(selectedTimeRange);
       setDailyRevenue(dailyRevenueData);
@@ -244,8 +227,8 @@ export default function Index() {
     fetchDashboardData(timeRange);
   }, [timeRange]);
 
-  const dynamicLabels =
-    dailyTranscripts?.map((entry) => {
+  const dynamicLabels = dailyInteractions
+    ?.map((entry) => {
       const date = new Date(entry.date);
       date.setDate(date.getDate() + 1);
       return date.toLocaleDateString("de-DE", {
@@ -253,16 +236,19 @@ export default function Index() {
         month: "2-digit",
         year: "2-digit",
       });
-    }) || [];
+    })
+    || [];
 
-  const transcriptsData = dailyTranscripts?.map((entry) => entry.count) || [];
+  const transcriptsData = dailyInteractions?.map((entry) => entry.count) || [];
   const revenueData = dailyRevenue?.map((entry) => entry.revenue) || [];
 
+  // Aktualisierte Diagrammdaten: Erstes Diagramm zeigt die Transkripte pro Tag,
+  // zweites Diagramm den Daily Revenue
   const lineChartData = {
     labels: dynamicLabels,
     datasets: [
       {
-        label: "Transcripts Over Time",
+        label: "Transkripte pro Tag",
         data: transcriptsData,
         borderColor: "#36a2eb",
         backgroundColor: "rgba(54, 162, 235, 0.2)",
@@ -278,6 +264,7 @@ export default function Index() {
     ],
   };
 
+  // Neues Daily Revenue Bar Chart
   const revenueChartData = {
     labels: dynamicLabels,
     datasets: [
