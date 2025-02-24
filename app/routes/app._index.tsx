@@ -44,7 +44,7 @@ interface IntentData {
   count: number;
 }
 
-interface DailyInteractionData {
+interface DailyTranscriptData {
   date: string;
   count: number;
 }
@@ -58,7 +58,7 @@ interface ApiResult {
   result: Array<{
     count?: number;
     intents?: IntentData[];
-    dailyInteractions?: DailyInteractionData[];
+    dailyTranscripts?: DailyTranscriptData[];
     dailyRevenue?: DailyRevenueData[];
     averageSessionDuration?: number;
     messagesExchanged?: number;
@@ -92,46 +92,68 @@ export default function Index() {
   const [uniqueUsers, setUniqueUsers] = useState<number | null>(null);
   const [topIntents, setTopIntents] = useState<IntentData[] | null>(null);
   const [sessions, setSessions] = useState<number | null>(null);
-  const [dailyInteractions, setDailyInteractions] = useState<DailyInteractionData[] | null>(null);
+  const [dailyTranscripts, setDailyTranscripts] = useState<DailyTranscriptData[] | null>(null);
   const [dailyRevenue, setDailyRevenue] = useState<DailyRevenueData[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<string>("7d");
-  const [cachedData, setCachedData] = useState<Record<string, DailyInteractionData[]>>({});
+  const [cachedData, setCachedData] = useState<Record<string, DailyTranscriptData[]>>({});
   const [cachedRevenue, setCachedRevenue] = useState<Record<string, DailyRevenueData[]>>({});
-  const [dailyTranscripts, setDailyTranscripts] = useState<DailyInteractionData[] | null>(null);
 
+  // 1) Tägliche Transcripts via lokalen Proxy abrufen
   const fetchDailyTranscripts = async (selectedTimeRange: string) => {
     if (cachedData[selectedTimeRange]) {
       console.log(`Using cached transcripts for ${selectedTimeRange}`);
       return cachedData[selectedTimeRange];
     }
-    try {
-      const response = await fetch("/proxy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timeRange: selectedTimeRange, type: "transcripts" }),
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error: ${response.status} - ${errorText}`);
+    const days = parseInt(selectedTimeRange.replace("d", ""));
+    const now = new Date();
+    const dailyData: DailyTranscriptData[] = [];
+
+    for (let i = 0; i < days; i++) {
+      const dayStart = new Date(now);
+      dayStart.setHours(0, 0, 0, 0);
+      dayStart.setDate(dayStart.getDate() - i);
+
+      const dayEnd = new Date(dayStart);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      try {
+        const response = await fetch("/proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: [
+              {
+                name: "transcripts", // Hier wird nun die Transcript-Zahl abgefragt
+                filter: {
+                  projectID: PROJECT_ID,
+                  startTime: dayStart.toISOString(),
+                  endTime: dayEnd.toISOString(),
+                },
+              },
+            ],
+          }),
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Error: ${response.status} - ${errorText}`);
+        }
+        const data: ApiResult = await response.json();
+        dailyData.push({
+          date: dayStart.toISOString().split("T")[0],
+          count: data.result[0]?.count || 0,
+        });
+      } catch (error) {
+        console.error(`Error fetching transcripts for ${dayStart.toISOString()}:`, error);
       }
-      const data = await response.json();
-      const transcriptsPerDay = data.transcriptsPerDay || {};
-      const transcriptsData = Object.keys(transcriptsPerDay).map((date) => ({
-        date,
-        count: transcriptsPerDay[date],
-      }));
-      transcriptsData.sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-      setCachedData((prev) => ({ ...prev, [selectedTimeRange]: transcriptsData }));
-      return transcriptsData;
-    } catch (error) {
-      console.error("Error fetching daily transcripts:", error);
-      return [];
     }
+
+    const reversedData = dailyData.reverse();
+    setCachedData((prev) => ({ ...prev, [selectedTimeRange]: reversedData }));
+    return reversedData;
   };
 
+  // 2) Revenue via den daily-data Endpunkt mit Übergabe des Zeitbereichs
   const fetchDailyRevenue = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
     if (cachedRevenue[selectedTimeRange]) {
       console.log(`Using cached revenue data for ${selectedTimeRange}`);
@@ -156,6 +178,7 @@ export default function Index() {
     }
   };
 
+  // 3) Gesamtdaten laden (Analytics, Transcripts, Revenue)
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
     try {
@@ -235,14 +258,21 @@ export default function Index() {
   const transcriptsData = dailyTranscripts?.map((entry) => entry.count) || [];
   const revenueData = dailyRevenue?.map((entry) => entry.revenue) || [];
 
-  const transcriptsChartData = {
+  const lineChartData = {
     labels: dynamicLabels,
     datasets: [
       {
-        label: "Transkripte pro Tag",
+        label: "Transcripts Over Time",
         data: transcriptsData,
         borderColor: "#36a2eb",
         backgroundColor: "rgba(54, 162, 235, 0.2)",
+        tension: 0.4,
+      },
+      {
+        label: "Revenue (in €)",
+        data: revenueData,
+        borderColor: "#FF6384",
+        backgroundColor: "rgba(255, 99, 132, 0.2)",
         tension: 0.4,
       },
     ],
@@ -270,11 +300,11 @@ export default function Index() {
     scales: { y: { beginAtZero: true } },
   };
 
-  const transcriptsChartOptions = {
+  const lineChartOptions = {
     responsive: true,
     plugins: {
       legend: { position: "top" as const },
-      title: { display: true, text: "Tägliche Transkripte" },
+      title: { display: true, text: "Daily Transcripts and Revenue" },
     },
     scales: { y: { beginAtZero: true } },
   };
@@ -300,12 +330,12 @@ export default function Index() {
         <Layout.Section>
           <Card>
             <Text as="h3" variant="headingMd">
-              Tägliche Transkripte
+              Daily Transcripts and Revenue
             </Text>
             {isLoading ? (
               <Text as="p">Loading...</Text>
             ) : (
-              <Line data={transcriptsChartData} options={transcriptsChartOptions} />
+              <Line data={lineChartData} options={lineChartOptions} />
             )}
           </Card>
         </Layout.Section>
