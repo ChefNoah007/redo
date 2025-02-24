@@ -17,7 +17,6 @@ const shopify = shopifyApi({
 
 export async function loader({ request }) {
   try {
-    // Lese den Zeitbereich aus der Query, Standard: "7d"
     const url = new URL(request.url);
     const timeRangeParam = url.searchParams.get("timeRange") || "7d";
     const days = parseInt(timeRangeParam.replace("d", ""));
@@ -27,22 +26,15 @@ export async function loader({ request }) {
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     console.log("Calculated start date:", startDate.toISOString());
 
-    // Shop-Domain (hier ggf. dynamisch ermitteln)
     const shopDomain = "coffee-principles.myshopify.com";
-
     const offlineSessionId = shopify.session.getOfflineId(shopDomain);
     const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
     if (!session) {
       console.log(`No offline session found for shop ${shopDomain}`);
-      return json(
-        { success: false, error: `No offline session found for shop ${shopDomain}` },
-        { status: 401 }
-      );
+      return json({ success: false, error: `No offline session found for shop ${shopDomain}` }, { status: 401 });
     }
 
     const client = new shopify.clients.Rest({ session });
-
-    // Abrufen aller Bestellungen
     const getResponse = await client.get({
       path: "orders",
       query: {
@@ -62,45 +54,43 @@ export async function loader({ request }) {
             attr.name === "usedChat" &&
             attr.value === "true"
         );
-      if (hasUsedChat) {
-        console.log(
-          `Order ${order.id}: created_at=${order.created_at}, total_price=${order.total_price}`
-        );
-      }
       return hasUsedChat && orderDate >= startDate;
     });
     console.log("Filtered chat orders count:", chatOrders.length);
 
-    // Aggregiere Umsatz pro Datum
+    // Aggregiere Umsatz und Kaufanzahl pro Datum
     const revenueByDate = {};
+    const purchaseCountByDate = {};
     chatOrders.forEach((order) => {
       const orderDate = new Date(order.created_at);
       const dateKey = orderDate.toISOString().split("T")[0];
+      // Umsatz
       const price = parseFloat(order.total_price || "0");
-      if (!revenueByDate[dateKey]) {
-        revenueByDate[dateKey] = 0;
-      }
-      revenueByDate[dateKey] += price;
+      revenueByDate[dateKey] = (revenueByDate[dateKey] || 0) + price;
+      // Kaufanzahl
+      purchaseCountByDate[dateKey] = (purchaseCountByDate[dateKey] || 0) + 1;
       console.log(
-        `Aggregating order ${order.id} for date ${dateKey}: price=${price}`
+        `Order ${order.id} für Datum ${dateKey} gezählt: price=${price}`
       );
     });
     console.log("Aggregated revenue by date:", revenueByDate);
+    console.log("Aggregated purchase counts by date:", purchaseCountByDate);
 
-    // Erstelle für jeden Tag im Zeitraum (exakt "days" Einträge) einen Eintrag (mit 0, falls keine Daten)
-    const dailyRevenue = [];
-    for (let i = 0; i < days; i++) {  // <-- Hier "i < days" verwenden
+    // Erstelle für jeden Tag im Zeitraum einen Eintrag (mit 0, falls keine Daten)
+    const dailyData = [];
+    for (let i = 0; i < days; i++) {
       const d = new Date(startDate);
-      d.setDate(d.getDate() + i + 1);  // Einen Tag früher beginnen
+      d.setDate(d.getDate() + i + 1);
       const dateKey = d.toISOString().split("T")[0];
-      dailyRevenue.push({
+      dailyData.push({
         date: dateKey,
+        purchases: purchaseCountByDate[dateKey] || 0,
         revenue: revenueByDate[dateKey] || 0,
       });
     }
-    console.log("Final daily revenue data:", dailyRevenue);
+    console.log("Final daily data:", dailyData);
 
-    return json({ dailyRevenue }, { status: 200 });
+    return json({ dailyData }, { status: 200 });
   } catch (error) {
     console.error("Error in daily-data loader:", error);
     return json({ success: false, error: error.message }, { status: 500 });

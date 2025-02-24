@@ -52,6 +52,7 @@ interface DailyInteractionData {
 interface DailyRevenueData {
   date: string;
   revenue: number;
+  purchases?: number;
 }
 
 interface ApiResult {
@@ -240,10 +241,10 @@ export default function Index() {
     || [];
 
   const transcriptsData = dailyInteractions?.map((entry) => entry.count) || [];
+  const purchasesData = dailyRevenue?.map((entry) => entry.purchases) || [];
   const revenueData = dailyRevenue?.map((entry) => entry.revenue) || [];
 
-  // Aktualisierte Diagrammdaten: Erstes Diagramm zeigt die Transkripte pro Tag,
-  // zweites Diagramm den Daily Revenue
+  // Erstes Diagramm zeigt Transkripte und Käufe pro Tag (Linien-Diagramm)
   const lineChartData = {
     labels: dynamicLabels,
     datasets: [
@@ -255,16 +256,16 @@ export default function Index() {
         tension: 0.4,
       },
       {
-        label: "Revenue (in €)",
-        data: revenueData,
-        borderColor: "#FF6384",
-        backgroundColor: "rgba(255, 99, 132, 0.2)",
+        label: "Käufe pro Tag",
+        data: purchasesData,
+        borderColor: "#4BC0C0",
+        backgroundColor: "rgba(75, 192, 192, 0.2)",
         tension: 0.4,
       },
     ],
   };
 
-  // Neues Daily Revenue Bar Chart
+  // Zweites Diagramm zeigt Daily Revenue (Balken-Diagramm)
   const revenueChartData = {
     labels: dynamicLabels,
     datasets: [
