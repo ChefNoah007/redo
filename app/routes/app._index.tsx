@@ -51,6 +51,7 @@ interface DailyInteractionData {
 
 interface DailyRevenueData {
   date: string;
+  purchases: number;
   revenue: number;
 }
 
@@ -155,12 +156,11 @@ export default function Index() {
   };
 
   // 2) Revenue via den daily-data Endpunkt mit Übergabe des Zeitbereichs
-  const fetchDailyRevenue = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
+  const fetchDailyPurchases = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
     if (cachedRevenue[selectedTimeRange]) {
-      console.log(`Using cached revenue data for ${selectedTimeRange}`);
+      console.log(`Using cached purchases data for ${selectedTimeRange}`);
       return cachedRevenue[selectedTimeRange];
     }
-
     try {
       const response = await fetch(`/daily-data?timeRange=${selectedTimeRange}`, {
         method: "GET",
@@ -169,12 +169,18 @@ export default function Index() {
         const errorText = await response.text();
         throw new Error(`Error: ${response.status} - ${errorText}`);
       }
-      const data: { dailyRevenue: DailyRevenueData[] } = await response.json();
-      const revenueData = data.dailyRevenue || [];
-      setCachedRevenue((prev) => ({ ...prev, [selectedTimeRange]: revenueData }));
-      return revenueData;
+      // Ändere den Rückgabewert: dailyPurchases statt dailyRevenue, and map to DailyRevenueData format
+      const data: { dailyData: { date: string; purchases: number; revenue: number }[] } = await response.json();
+      const rawPurchasesData = data.dailyData || [];
+      const purchasesData = rawPurchasesData.map((item) => ({
+        date: item.date,
+        purchases: item.purchases,
+        revenue: item.revenue,
+      }));
+      setCachedRevenue((prev) => ({ ...prev, [selectedTimeRange]: purchasesData }));
+      return purchasesData;
     } catch (error) {
-      console.error("Error fetching daily revenue:", error);
+      console.error("Error fetching daily purchases:", error);
       return [];
     }
   };
@@ -186,8 +192,8 @@ export default function Index() {
       const dailyInteractionsData = await fetchDailyInteractions(selectedTimeRange);
       setDailyInteractions(dailyInteractionsData);
 
-      const dailyRevenueData = await fetchDailyRevenue(selectedTimeRange);
-      setDailyRevenue(dailyRevenueData);
+      const dailyPurchasesData = await fetchDailyPurchases(selectedTimeRange);
+      setDailyRevenue(dailyPurchasesData);
 
       const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
       const response = await fetch("/proxy", {
@@ -257,21 +263,22 @@ export default function Index() {
     }) || [];
 
   const interactionsData = dailyInteractions?.map((entry) => entry.count) || [];
+  const purchasesData = dailyRevenue?.map((entry) => entry.purchases) || [];
   const revenueData = dailyRevenue?.map((entry) => entry.revenue) || [];
 
-  const lineChartData = {
+  const interactionsChartData = {
     labels: dynamicLabels,
     datasets: [
       {
-        label: "Interactions Over Time",
+        label: "Transkripte pro Tag",
         data: interactionsData,
         borderColor: "#36a2eb",
         backgroundColor: "rgba(54, 162, 235, 0.2)",
         tension: 0.4,
       },
       {
-        label: "Revenue (in €)",
-        data: revenueData,
+        label: "Käufe pro Tag",
+        data: purchasesData,
         borderColor: "#FF6384",
         backgroundColor: "rgba(255, 99, 132, 0.2)",
         tension: 0.4,
@@ -279,12 +286,11 @@ export default function Index() {
     ],
   };
 
-  // Neue Definition für Daily Revenue Chart (als Bar Chart)
   const revenueChartData = {
     labels: dynamicLabels,
     datasets: [
       {
-        label: "Daily Revenue (€)",
+        label: "Umsatz pro Tag (€)",
         data: revenueData,
         backgroundColor: "rgba(255, 99, 132, 0.2)",
         borderColor: "#FF6384",
@@ -293,20 +299,20 @@ export default function Index() {
     ],
   };
 
-  const revenueChartOptions = {
+  const interactionsChartOptions = {
     responsive: true,
     plugins: {
       legend: { position: "top" as const },
-      title: { display: true, text: "Daily Revenue" },
+      title: { display: true, text: "Tägliche Transkripte und Käufe" },
     },
     scales: { y: { beginAtZero: true } },
   };
 
-  const lineChartOptions = {
+  const revenueChartOptions = {
     responsive: true,
     plugins: {
       legend: { position: "top" as const },
-      title: { display: true, text: "Daily Interactions and Revenue" },
+      title: { display: true, text: "Täglicher Umsatz" },
     },
     scales: { y: { beginAtZero: true } },
   };
@@ -332,12 +338,12 @@ export default function Index() {
         <Layout.Section>
           <Card>
             <Text as="h3" variant="headingMd">
-              Daily Interactions and Revenue
+              Tägliche Transkripte und Käufe
             </Text>
             {isLoading ? (
               <Text as="p">Loading...</Text>
             ) : (
-              <Line data={lineChartData} options={lineChartOptions} />
+              <Line data={interactionsChartData} options={interactionsChartOptions} />
             )}
           </Card>
         </Layout.Section>
@@ -345,7 +351,7 @@ export default function Index() {
         <Layout.Section variant="oneHalf">
           <Card>
             <Text as="h3" variant="headingMd">
-              Daily Revenue
+              Täglicher Umsatz
             </Text>
             <Bar data={revenueChartData} options={revenueChartOptions} />
           </Card>
