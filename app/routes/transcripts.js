@@ -19,7 +19,22 @@ export const loader = async () => {
     }
 
     const data = await response.json();
-    return json(data);
+    const transcriptsByDate = {};
+
+    data.transcripts.forEach((transcript) => {
+      const dateKey = new Date(transcript.timestamp).toISOString().split("T")[0];
+      if (!transcriptsByDate[dateKey]) {
+        transcriptsByDate[dateKey] = 0;
+      }
+      transcriptsByDate[dateKey]++;
+    });
+
+    const dailyTranscripts = Object.keys(transcriptsByDate).map((date) => ({
+      date,
+      count: transcriptsByDate[date],
+    }));
+
+    return json({ dailyTranscripts });
   } catch (error) {
     console.error("Proxy error:", error);
     return json({ error: "Something went wrong" }, { status: 500 });

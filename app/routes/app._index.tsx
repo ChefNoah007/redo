@@ -276,6 +276,12 @@ export default function Index() {
         backgroundColor: "rgba(54, 162, 235, 0.2)",
         tension: 0.4,
       },
+    ],
+  };
+
+  const purchasesChartData = {
+    labels: dynamicLabels,
+    datasets: [
       {
         label: "Käufe pro Tag",
         data: purchasesData,
@@ -303,7 +309,16 @@ export default function Index() {
     responsive: true,
     plugins: {
       legend: { position: "top" as const },
-      title: { display: true, text: "Tägliche Transkripte und Käufe" },
+      title: { display: true, text: "Tägliche Transkripte" },
+    },
+    scales: { y: { beginAtZero: true } },
+  };
+
+  const purchasesChartOptions = {
+    responsive: true,
+    plugins: {
+      legend: { position: "top" as const },
+      title: { display: true, text: "Tägliche Käufe" },
     },
     scales: { y: { beginAtZero: true } },
   };
@@ -338,13 +353,22 @@ export default function Index() {
         <Layout.Section>
           <Card>
             <Text as="h3" variant="headingMd">
-              Tägliche Transkripte und Käufe
+              Tägliche Transkripte
             </Text>
             {isLoading ? (
               <Text as="p">Loading...</Text>
             ) : (
               <Line data={interactionsChartData} options={interactionsChartOptions} />
             )}
+          </Card>
+        </Layout.Section>
+
+        <Layout.Section variant="oneHalf">
+          <Card>
+            <Text as="h3" variant="headingMd">
+              Tägliche Käufe
+            </Text>
+            <Bar data={purchasesChartData} options={purchasesChartOptions} />
           </Card>
         </Layout.Section>
 
