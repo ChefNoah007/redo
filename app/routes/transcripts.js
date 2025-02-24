@@ -25,6 +25,10 @@ export const loader = async ({ request }) => {
     }
 
     const data = await response.json();
+    if (!data.transcripts) {
+      throw new Error("Transcripts data is missing");
+    }
+
     const transcriptsByDate = {};
 
     data.transcripts.forEach((transcript) => {
