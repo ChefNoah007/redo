@@ -15,7 +15,7 @@ export const loader = async ({ request }) => {
       method: "GET",
       headers: {
         Accept: "application/json",
-        Authorization: `${API_KEY}`,
+        Authorization: API_KEY,
       },
     });
 
@@ -25,13 +25,11 @@ export const loader = async ({ request }) => {
     }
 
     const data = await response.json();
-    if (!data.transcripts) {
-      throw new Error("Transcripts data is missing");
-    }
+    // Wenn transcripts nicht vorhanden ist, benutze ein leeres Array
+    const transcripts = data.transcripts || [];
 
     const transcriptsByDate = {};
-
-    data.transcripts.forEach((transcript) => {
+    transcripts.forEach((transcript) => {
       const transcriptDate = new Date(transcript.timestamp);
       if (transcriptDate >= startDate) {
         const dateKey = transcriptDate.toISOString().split("T")[0];
@@ -50,6 +48,7 @@ export const loader = async ({ request }) => {
     return json({ dailyTranscripts });
   } catch (error) {
     console.error("Proxy error:", error);
-    return json({ error: "Something went wrong" }, { status: 500 });
+    // Statt einen Fehler zu werfen, wird ein leeres Array zurückgegeben
+    return json({ dailyTranscripts: [] }, { status: 200 });
   }
 };
