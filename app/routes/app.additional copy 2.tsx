@@ -4,7 +4,7 @@ import { Page, Layout, Card, TextField, Checkbox, Button, FormLayout, Toast, Fra
 import { TitleBar } from '@shopify/app-bridge-react';
 
 export default function SettingsPage() {
-  // Zustand für alle Felder
+  // Bestehende Zustände
   const [hideOnDesktop, setHideOnDesktop] = useState(false);
   const [hideOnMobile, setHideOnMobile] = useState(false);
   const [botBackgroundColour, setBotBackgroundColour] = useState('#FFFFFF');
@@ -17,6 +17,14 @@ export default function SettingsPage() {
   const [outerRadius, setOuterRadius] = useState(0);
   const [chatBubbleRadius, setChatBubbleRadius] = useState(0);
   const [inputButtonRadius, setInputButtonRadius] = useState(0);
+  
+  // Neue Zustände für zusätzliche Anpassungen
+  const [chatContainerWidth, setChatContainerWidth] = useState('980px');
+  const [chatContainerPadding, setChatContainerPadding] = useState(20);
+  const [chatContainerMargin, setChatContainerMargin] = useState(20);
+  const [containerBoxShadow, setContainerBoxShadow] = useState('0px 0px 200px rgba(0, 0, 0, 0.2)');
+  const [fontFamily, setFontFamily] = useState('Assistant, sans-serif');
+  const [fontSize, setFontSize] = useState(16);
 
   const [toastActive, setToastActive] = useState(false);
   const [toastContent, setToastContent] = useState('');
@@ -39,6 +47,14 @@ export default function SettingsPage() {
            setOuterRadius(data.settings.outer_radius);
            setChatBubbleRadius(data.settings.chat_bubble_radius);
            setInputButtonRadius(data.settings.input_button_radius);
+           
+           // Neue Einstellungen laden, falls vorhanden – Standardwerte falls nicht
+           setChatContainerWidth(data.settings.chat_container_width || '980px');
+           setChatContainerPadding(data.settings.chat_container_padding || 20);
+           setChatContainerMargin(data.settings.chat_container_margin || 20);
+           setContainerBoxShadow(data.settings.container_box_shadow || '0px 0px 200px rgba(0, 0, 0, 0.2)');
+           setFontFamily(data.settings.font_family || 'Assistant, sans-serif');
+           setFontSize(data.settings.font_size || 16);
          }
       });
   }, []);
@@ -57,6 +73,13 @@ export default function SettingsPage() {
       outer_radius: outerRadius,
       chat_bubble_radius: chatBubbleRadius,
       input_button_radius: inputButtonRadius,
+      // Neue Felder
+      chat_container_width: chatContainerWidth,
+      chat_container_padding: chatContainerPadding,
+      chat_container_margin: chatContainerMargin,
+      container_box_shadow: containerBoxShadow,
+      font_family: fontFamily,
+      font_size: fontSize,
     };
 
     const response = await fetch('/api/save-settings', {
@@ -98,6 +121,13 @@ export default function SettingsPage() {
                 <TextField type="number" label="Äußerer Container – Border Radius (px)" value={outerRadius.toString()} onChange={(value)=> setOuterRadius(Number(value))} autoComplete="off" />
                 <TextField type="number" label="Chat-Bubbles – Border Radius (px)" value={chatBubbleRadius.toString()} onChange={(value)=> setChatBubbleRadius(Number(value))} autoComplete="off" />
                 <TextField type="number" label="Eingabefeld & Button – Border Radius (px)" value={inputButtonRadius.toString()} onChange={(value)=> setInputButtonRadius(Number(value))} autoComplete="off" />
+                {/* Neue Einstellungsmöglichkeiten */}
+                <TextField label="Chat Container Breite" value={chatContainerWidth} onChange={setChatContainerWidth} autoComplete="off" />
+                <TextField type="number" label="Chat Container Padding (px)" value={chatContainerPadding.toString()} onChange={(value) => setChatContainerPadding(Number(value))} autoComplete="off" />
+                <TextField type="number" label="Chat Container Margin (px)" value={chatContainerMargin.toString()} onChange={(value) => setChatContainerMargin(Number(value))} autoComplete="off" />
+                <TextField label="Container Box Shadow (CSS)" value={containerBoxShadow} onChange={setContainerBoxShadow} autoComplete="off" />
+                <TextField label="Font Family" value={fontFamily} onChange={setFontFamily} autoComplete="off" />
+                <TextField type="number" label="Font Size (px)" value={fontSize.toString()} onChange={(value)=> setFontSize(Number(value))} autoComplete="off" />
                 <Button onClick={handleSave}>Speichern</Button>
               </FormLayout>
             </Card>
