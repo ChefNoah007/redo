@@ -7,32 +7,21 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   console.log('User ID:', userID);
 
-  // Voiceflow-Einstellungen werden aus der API geladen
-  let VF_KEY = "";
-  let VF_PROJECT_ID = "";
-  let VF_VERSION_ID = "";
+  // Voiceflow-Einstellungen direkt im Code definiert
+  // Diese Werte wurden aus app/utils/voiceflow-settings.server.js übernommen
+  let VF_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
+  let VF_PROJECT_ID = "6703af9afcd0ea507e9c5369";
+  let VF_VERSION_ID = "6703af9afcd0ea507e9c536a";
   const currentUrl = window.location.href;
 
-  // Funktion zum Laden der Voiceflow-Einstellungen aus der API
+  // Dummy-Funktion, die immer erfolgreich ist
   async function loadVoiceflowSettings() {
-    try {
-      const response = await fetch('/api/voiceflow-settings');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const settings = await response.json();
-      console.log('Voiceflow-Einstellungen geladen:', settings);
-      
-      // Einstellungen setzen
-      VF_KEY = settings.vf_key || "";
-      VF_PROJECT_ID = settings.vf_project_id || "";
-      VF_VERSION_ID = settings.vf_version_id || "";
-      
-      return true;
-    } catch (error) {
-      console.error('Fehler beim Laden der Voiceflow-Einstellungen:', error);
-      return false;
-    }
+    console.log('Voiceflow-Einstellungen direkt geladen:', {
+      vf_key: VF_KEY,
+      vf_project_id: VF_PROJECT_ID,
+      vf_version_id: VF_VERSION_ID
+    });
+    return true;
   }
 
 
