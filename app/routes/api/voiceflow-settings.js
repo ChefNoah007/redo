@@ -1,44 +1,19 @@
 import { json } from "@remix-run/node";
-import { authenticate } from "../../shopify.server";
 
 /**
  * API endpoint to fetch Voiceflow settings
  * This will be used by the frontend JavaScript to get the Voiceflow credentials
+ * This is a public endpoint that doesn't require authentication
  */
-export async function loader({ request }) {
-  // For public access, we don't need to authenticate the request
-  // But we do need to authenticate to access the admin API
-  const { admin } = await authenticate.admin(request);
-
+export async function loader() {
   try {
-    // Fetch the Voiceflow settings from metafields
-    const response = await admin.graphql(
-      `query {
-        shop {
-          metafield(namespace: "voiceflow_settings", key: "api_credentials") {
-            value
-          }
-        }
-      }`
-    );
-
-    const responseJson = await response.json();
-    const metafield = responseJson.data.shop.metafield;
-    
-    // Default settings if no metafield exists
-    let settings = {
-      vf_key: "",
-      vf_project_id: "",
-      vf_version_id: ""
+    // Default Voiceflow settings
+    // These are the same default settings defined in app/utils/voiceflow-settings.server.js
+    const settings = {
+      vf_key: "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi",
+      vf_project_id: "6703af9afcd0ea507e9c5369",
+      vf_version_id: "6703af9afcd0ea507e9c536a"
     };
-
-    if (metafield) {
-      try {
-        settings = JSON.parse(metafield.value);
-      } catch (e) {
-        console.error("Error parsing metafield value:", e);
-      }
-    }
 
     // Return the settings as JSON with appropriate cache headers
     return json(settings, {
