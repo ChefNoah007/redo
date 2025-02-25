@@ -1,10 +1,13 @@
 // app/routes/proxy.js
 
 import { json } from "@remix-run/node";
+import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
 
 export const action = async ({ request }) => {
-  const API_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
-  const PROJECT_ID = "6703af9afcd0ea507e9c5369"; // Ersetze dies durch deine tatsächliche Projekt-ID
+  // Fetch Voiceflow settings from metafields
+  const settings = await getVoiceflowSettings(request);
+  const API_KEY = settings.vf_key;
+  const PROJECT_ID = settings.vf_project_id;
   const VOICEFLOW_API_TRANSCRIPTS_URL = `https://api.voiceflow.com/v2/transcripts/${PROJECT_ID}`;
 
   try {

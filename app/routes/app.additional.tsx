@@ -11,9 +11,25 @@ import {
   Card,
   Box,
 } from "@shopify/polaris";
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
+import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
 
-const API_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
-const PROJECT_ID = "6703af9afcd0ea507e9c5369";
+// Define the type for our loader data
+interface LoaderData {
+  vf_key: string;
+  vf_project_id: string;
+}
+
+// Loader function to fetch Voiceflow settings
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const settings = await getVoiceflowSettings(request);
+  return json<LoaderData>({ 
+    vf_key: settings.vf_key,
+    vf_project_id: settings.vf_project_id
+  });
+};
+
 const API_URL = "https://redo-ia4o.onrender.com";
 
 interface Transcript {
@@ -41,6 +57,10 @@ interface TranscriptDetail {
 }
 
 export default function TranscriptViewer() {
+  // Get Voiceflow settings from loader
+  const { vf_key, vf_project_id } = useLoaderData<typeof loader>();
+  const API_KEY = vf_key;
+  const PROJECT_ID = vf_project_id;
   const [transcripts, setTranscripts] = useState<Transcript[]>([]); // Typ-Annotation hinzugefügt
   const [selectedTranscript, setSelectedTranscript] = useState<TranscriptDetail | null>(null); // Details eines Transkripts
   const [loading, setLoading] = useState(false);
@@ -81,7 +101,7 @@ export default function TranscriptViewer() {
       const response = await fetch(`https://redo-ia4o.onrender.com/transcripts/${transcriptID}`, {
         method: "GET",
         headers: {
-          Authorization: "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi",
+          Authorization: API_KEY,
           Accept: "application/json",
         },
       });

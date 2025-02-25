@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import { useFetcher } from "@remix-run/react";
+import { json } from "@remix-run/node";
+import { useFetcher, useLoaderData } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -24,6 +25,7 @@ import {
 } from "chart.js";
 import { Line, Bar } from "react-chartjs-2";
 import { authenticate } from "../shopify.server";
+import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
 
 ChartJS.register(
   CategoryScale,
@@ -36,8 +38,12 @@ ChartJS.register(
   Legend
 );
 
-const API_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
-const PROJECT_ID = "6703af9afcd0ea507e9c5369";
+// Define the type for our loader data
+interface LoaderData {
+  vf_key: string;
+  vf_project_id: string;
+  vf_version_id: string;
+}
 
 interface IntentData {
   name: string;
@@ -85,10 +91,20 @@ const calculateTimeRange = (timeRange: string): { startTime: string; endTime: st
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-  return null;
+  
+  // Fetch Voiceflow settings from metafields
+  const settings = await getVoiceflowSettings(request);
+  
+  return json<LoaderData>({
+    vf_key: settings.vf_key,
+    vf_project_id: settings.vf_project_id,
+    vf_version_id: settings.vf_version_id
+  });
 };
 
 export default function Index() {
+  // Get Voiceflow settings from loader
+  const { vf_key, vf_project_id, vf_version_id } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
   const [uniqueUsers, setUniqueUsers] = useState<number | null>(null);
   const [topIntents, setTopIntents] = useState<IntentData[] | null>(null);
@@ -182,7 +198,7 @@ export default function Index() {
             {
               name: "sessions",
               filter: {
-                projectID: PROJECT_ID,
+                projectID: vf_project_id,
                 startTime,
                 endTime,
                 platform: { not: "canvas-prototype" },
@@ -191,7 +207,7 @@ export default function Index() {
             {
               name: "top_intents",
               filter: {
-                projectID: PROJECT_ID,
+                projectID: vf_project_id,
                 limit: 5,
                 startTime,
                 endTime,
@@ -201,7 +217,7 @@ export default function Index() {
             {
               name: "unique_users",
               filter: {
-                projectID: PROJECT_ID,
+                projectID: vf_project_id,
                 startTime,
                 endTime,
                 platform: { not: "canvas-prototype" },

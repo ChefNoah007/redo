@@ -84,13 +84,36 @@ if (!userID) {
 }
 console.log('User ID:', userID);
 
-const VF_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
-const VF_PROJECT_ID = "6703af9afcd0ea507e9c5369";
-const VF_VERSION_ID = "6703af9afcd0ea507e9c536a";
+// Voiceflow-Einstellungen werden aus der API geladen
+let VF_KEY = "";
+let VF_PROJECT_ID = "";
+let VF_VERSION_ID = "";
 const currentUrl = window.location.href;
 const pageTitle = document.title;
 console.log('Aktuelle URL:', currentUrl);
 console.log('Seitentitel:', pageTitle);
+
+// Funktion zum Laden der Voiceflow-Einstellungen aus der API
+async function loadVoiceflowSettings() {
+  try {
+    const response = await fetch('/api/voiceflow-settings');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const settings = await response.json();
+    console.log('Voiceflow-Einstellungen geladen:', settings);
+    
+    // Einstellungen setzen
+    VF_KEY = settings.vf_key || "";
+    VF_PROJECT_ID = settings.vf_project_id || "";
+    VF_VERSION_ID = settings.vf_version_id || "";
+    
+    return true;
+  } catch (error) {
+    console.error('Fehler beim Laden der Voiceflow-Einstellungen:', error);
+    return false;
+  }
+}
 
 // NEU: Seiteninhalt extrahieren
 // Passe den Selektor (#main-content) bei Bedarf an die Struktur deiner Seite an
@@ -410,15 +433,25 @@ chatInput.addEventListener('keypress', function (event) {
   }
 });
 
-// (6) Launch aufrufen
-// Hier wird nun zusätzlich der extrahierte Seiteninhalt mitübergeben
-const launchPayload = { 
-  productName: productName, 
-  pageSlug: pageSlug, 
-  currentURL: currentUrl,
-  pageTitle: pageTitle,
-  pageContent: pageContent
-};
-console.log("vfSendLaunch - Launch-Payload:", launchPayload);
-vfSendLaunch(launchPayload);
+// (6) Voiceflow-Einstellungen laden und dann Chat initialisieren
+loadVoiceflowSettings().then(success => {
+  if (success) {
+    // Hier wird nun zusätzlich der extrahierte Seiteninhalt mitübergeben
+    const launchPayload = { 
+      productName: productName, 
+      pageSlug: pageSlug, 
+      currentURL: currentUrl,
+      pageTitle: pageTitle,
+      pageContent: pageContent
+    };
+    console.log("vfSendLaunch - Launch-Payload:", launchPayload);
+    vfSendLaunch(launchPayload);
+  } else {
+    // Fallback-Nachricht anzeigen, wenn die Einstellungen nicht geladen werden konnten
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'vf-message vf-message-agent';
+    messageDiv.innerHTML = 'Der Chat konnte nicht initialisiert werden. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Support.';
+    chatBox.appendChild(messageDiv);
+  }
+});
 });

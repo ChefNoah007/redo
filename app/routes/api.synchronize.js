@@ -2,6 +2,7 @@ import { json } from "@remix-run/node";
 import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "../db.server.cjs";
+import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
 
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY,
@@ -14,6 +15,8 @@ const shopify = shopifyApi({
 });
 
 export const action = async ({ request }) => {
+  // Fetch Voiceflow settings from metafields
+  const settings = await getVoiceflowSettings(request);
   try {
     const body = await request.json();
     const overwrite = body.overwrite === true;
@@ -119,7 +122,7 @@ export const action = async ({ request }) => {
     const voiceflowResponse = await fetch(voiceflowUrl, {
       method: "POST",
       headers: {
-        Authorization: "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi",
+        Authorization: settings.vf_key,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(voiceflowData),

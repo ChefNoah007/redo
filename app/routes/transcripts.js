@@ -1,8 +1,11 @@
 import { json } from "@remix-run/node";
+import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
 
 export const loader = async ({ request }) => {
-  const API_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
-  const VOICEFLOW_API_TRANSCRIPTS_URL = "https://api.voiceflow.com/v2/transcripts/6703af9afcd0ea507e9c5369";
+  // Fetch Voiceflow settings from metafields
+  const settings = await getVoiceflowSettings(request);
+  const API_KEY = settings.vf_key;
+  const VOICEFLOW_API_TRANSCRIPTS_URL = `https://api.voiceflow.com/v2/transcripts/${settings.vf_project_id}`;
 
   try {
     const url = new URL(request.url);
