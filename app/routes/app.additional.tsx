@@ -70,30 +70,73 @@ export default function TranscriptViewer() {
   const fetchTranscripts = async () => {
     setLoading(true);
     try {
-      const response = await fetch("https://redo-ia4o.onrender.com/transcripts", {
-        method: "GET",
-        headers: {
-          Authorization: `${API_KEY}`,
-          Accept: "application/json",
-        },
-      });
-  
-      if (!response.ok) {
-        throw new Error("Failed to fetch transcripts");
-      }
-  
-      const data = await response.json();
-      console.log("API Response:", data); // Debugging
+      console.log("Transcript viewer - Fetching transcripts with API key:", API_KEY ? "Present (masked)" : "Missing");
       
-      // Ensure data is an array before setting it
-      if (Array.isArray(data)) {
-        setTranscripts(data);
-      } else {
-        console.error("API did not return an array:", data);
+      // Check if API key is available
+      if (!API_KEY) {
+        console.error("Transcript viewer - Missing API key");
+        setTranscripts([]);
+        return;
+      }
+      
+      try {
+        const response = await fetch("https://redo-ia4o.onrender.com/transcripts", {
+          method: "GET",
+          headers: {
+            Authorization: `${API_KEY}`,
+            Accept: "application/json",
+          },
+        });
+    
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Transcript viewer - API request failed: ${response.status} ${response.statusText}`, errorText);
+          setTranscripts([]);
+          return;
+        }
+    
+        // Parse the response
+        let data;
+        try {
+          data = await response.json();
+          console.log("Transcript viewer - API Response:", data); // Debugging
+        } catch (parseError) {
+          console.error("Transcript viewer - Error parsing API response:", parseError);
+          setTranscripts([]);
+          return;
+        }
+        
+        // Handle different response formats
+        if (Array.isArray(data)) {
+          console.log(`Transcript viewer - Received array with ${data.length} transcripts`);
+          setTranscripts(data);
+        } else if (data && Array.isArray(data.dailyTranscripts)) {
+          // If the API returns an object with a dailyTranscripts array property
+          console.log(`Transcript viewer - Received object with dailyTranscripts array (${data.dailyTranscripts.length} items)`);
+          setTranscripts(data.dailyTranscripts);
+        } else if (data && typeof data === 'object') {
+          // Try to extract any array property from the response
+          const arrayProps = Object.entries(data)
+            .filter(([_, value]) => Array.isArray(value))
+            .map(([key, value]) => ({ key, value: value as Transcript[] }));
+          
+          if (arrayProps.length > 0) {
+            console.log(`Transcript viewer - Found array property '${arrayProps[0].key}' with ${arrayProps[0].value.length} items`);
+            setTranscripts(arrayProps[0].value);
+          } else {
+            console.error("Transcript viewer - API response has no array properties:", data);
+            setTranscripts([]);
+          }
+        } else {
+          console.error("Transcript viewer - API did not return a valid response:", data);
+          setTranscripts([]);
+        }
+      } catch (fetchError) {
+        console.error("Transcript viewer - Error fetching transcripts:", fetchError);
         setTranscripts([]);
       }
     } catch (error) {
-      console.error("Error fetching transcripts:", error);
+      console.error("Transcript viewer - Unexpected error:", error);
       setTranscripts([]);
     } finally {
       setLoading(false);

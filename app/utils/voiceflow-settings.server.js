@@ -26,54 +26,73 @@ export async function getVoiceflowSettings(request) {
     }
 
     try {
-      // Authenticate with Shopify admin API
-      const { admin } = await authenticate.admin(request);
-
-      // Fetch the Voiceflow settings from metafields
-      const response = await admin.graphql(
-        `query {
-          shop {
-            metafield(namespace: "voiceflow_settings", key: "api_credentials") {
-              value
-            }
-          }
-        }`
-      );
-
-      const responseJson = await response.json();
-      
-      // Check if the response has the expected structure
-      if (!responseJson.data || !responseJson.data.shop) {
-        console.error("getVoiceflowSettings: Invalid GraphQL response structure", responseJson);
+      // Check if the request is authenticated
+      let admin;
+      try {
+        // Authenticate with Shopify admin API
+        const authResult = await authenticate.admin(request);
+        admin = authResult.admin;
+        
+        if (!admin) {
+          console.error("getVoiceflowSettings: Authentication successful but admin object is missing");
+          return DEFAULT_SETTINGS;
+        }
+      } catch (authError) {
+        // If authentication fails, log the error and return default settings
+        console.error("getVoiceflowSettings: Authentication failed:", authError);
         return DEFAULT_SETTINGS;
       }
 
-      const metafield = responseJson.data.shop.metafield;
-      
-      // If the metafield exists, parse the JSON value
-      if (metafield) {
-        try {
-          const settings = JSON.parse(metafield.value);
-          return {
-            vf_key: settings.vf_key || DEFAULT_SETTINGS.vf_key,
-            vf_project_id: settings.vf_project_id || DEFAULT_SETTINGS.vf_project_id,
-            vf_version_id: settings.vf_version_id || DEFAULT_SETTINGS.vf_version_id
-          };
-        } catch (e) {
-          console.error("Error parsing metafield value:", e);
+      // Fetch the Voiceflow settings from metafields
+      try {
+        const response = await admin.graphql(
+          `query {
+            shop {
+              metafield(namespace: "voiceflow_settings", key: "api_credentials") {
+                value
+              }
+            }
+          }`
+        );
+
+        const responseJson = await response.json();
+        
+        // Check if the response has the expected structure
+        if (!responseJson.data || !responseJson.data.shop) {
+          console.error("getVoiceflowSettings: Invalid GraphQL response structure", responseJson);
+          return DEFAULT_SETTINGS;
         }
-      } else {
-        console.log("getVoiceflowSettings: No metafield found, using default settings");
+
+        const metafield = responseJson.data.shop.metafield;
+        
+        // If the metafield exists, parse the JSON value
+        if (metafield) {
+          try {
+            const settings = JSON.parse(metafield.value);
+            console.log("getVoiceflowSettings: Successfully retrieved settings from metafield");
+            return {
+              vf_key: settings.vf_key || DEFAULT_SETTINGS.vf_key,
+              vf_project_id: settings.vf_project_id || DEFAULT_SETTINGS.vf_project_id,
+              vf_version_id: settings.vf_version_id || DEFAULT_SETTINGS.vf_version_id
+            };
+          } catch (parseError) {
+            console.error("getVoiceflowSettings: Error parsing metafield value:", parseError);
+          }
+        } else {
+          console.log("getVoiceflowSettings: No metafield found, using default settings");
+        }
+      } catch (graphqlError) {
+        console.error("getVoiceflowSettings: GraphQL query failed:", graphqlError);
       }
 
       // Return default settings if metafield doesn't exist or can't be parsed
       return DEFAULT_SETTINGS;
     } catch (authError) {
-      console.error("Authentication error in getVoiceflowSettings:", authError);
+      console.error("getVoiceflowSettings: Authentication error:", authError);
       return DEFAULT_SETTINGS;
     }
   } catch (error) {
-    console.error("Unexpected error in getVoiceflowSettings:", error);
+    console.error("getVoiceflowSettings: Unexpected error:", error);
     return DEFAULT_SETTINGS;
   }
 }

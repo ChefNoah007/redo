@@ -189,53 +189,84 @@ export default function Index() {
       const dailyRevenueData = await fetchDailyRevenue(selectedTimeRange);
       setDailyRevenue(dailyRevenueData);
 
-      const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
-      const response = await fetch("/proxy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: [
-            {
-              name: "sessions",
-              filter: {
-                projectID: vf_project_id,
-                startTime,
-                endTime,
-                platform: { not: "canvas-prototype" },
+      try {
+        const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
+        console.log("Dashboard - Fetching analytics data with time range:", { startTime, endTime });
+        
+        const response = await fetch("/proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: [
+              {
+                name: "sessions",
+                filter: {
+                  projectID: vf_project_id,
+                  startTime,
+                  endTime,
+                  platform: { not: "canvas-prototype" },
+                },
               },
-            },
-            {
-              name: "top_intents",
-              filter: {
-                projectID: vf_project_id,
-                limit: 5,
-                startTime,
-                endTime,
-                platform: { not: "canvas-prototype" },
+              {
+                name: "top_intents",
+                filter: {
+                  projectID: vf_project_id,
+                  limit: 5,
+                  startTime,
+                  endTime,
+                  platform: { not: "canvas-prototype" },
+                },
               },
-            },
-            {
-              name: "unique_users",
-              filter: {
-                projectID: vf_project_id,
-                startTime,
-                endTime,
-                platform: { not: "canvas-prototype" },
+              {
+                name: "unique_users",
+                filter: {
+                  projectID: vf_project_id,
+                  startTime,
+                  endTime,
+                  platform: { not: "canvas-prototype" },
+                },
               },
-            },
-          ],
-        }),
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error: ${response.status} - ${errorText}`);
+            ],
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Dashboard - API request failed: ${response.status} ${response.statusText}`, errorText);
+          // Continue with default values instead of throwing
+        } else {
+          const data = await response.json();
+          console.log("Dashboard - Analytics API response:", data);
+          
+          // Validate the response structure
+          if (data && data.result && Array.isArray(data.result)) {
+            // Safe access to data with fallbacks
+            setSessions(data.result[0]?.count ?? 0);
+            setTopIntents(data.result[1]?.intents ?? []);
+            setUniqueUsers(data.result[2]?.count ?? 0);
+          } else {
+            console.error("Dashboard - Invalid API response format:", data);
+            // Set default values
+            setSessions(0);
+            setTopIntents([]);
+            setUniqueUsers(0);
+          }
+        }
+      } catch (apiError) {
+        console.error("Dashboard - Error fetching analytics data:", apiError);
+        // Set default values for analytics data
+        setSessions(0);
+        setTopIntents([]);
+        setUniqueUsers(0);
       }
-      const data: ApiResult = await response.json();
-      setSessions(data.result[0]?.count || 0);
-      setTopIntents(data.result[1]?.intents || []);
-      setUniqueUsers(data.result[2]?.count || 0);
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.error("Dashboard - Error fetching dashboard data:", error);
+      // Set default values for all data
+      setDailyInteractions([]);
+      setDailyRevenue([]);
+      setSessions(0);
+      setTopIntents([]);
+      setUniqueUsers(0);
     } finally {
       setIsLoading(false);
     }
