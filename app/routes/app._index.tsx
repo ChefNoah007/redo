@@ -36,7 +36,6 @@ ChartJS.register(
   Legend
 );
 
-// Typen für Loader-Daten und weitere Datenmodelle
 interface LoaderData {
   vf_key: string;
   vf_project_id: string;
@@ -78,7 +77,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return json<LoaderData>({
     vf_key: settings.vf_key,
     vf_project_id: settings.vf_project_id,
-    vf_version_id: settings.vf_version_id
+    vf_version_id: settings.vf_version_id,
   });
 };
 
@@ -110,7 +109,7 @@ export default function Index() {
   const [cachedData, setCachedData] = useState<Record<string, DailyInteractionData[]>>({});
   const [cachedRevenue, setCachedRevenue] = useState<Record<string, DailyRevenueData[]>>({});
 
-  // 1) Transkripte pro Tag via Proxy
+  // 1) Transkripte pro Tag über den Proxy abrufen
   const fetchDailyTranscripts = async (selectedTimeRange: string) => {
     if (cachedData[selectedTimeRange]) {
       console.log(`Using cached transcripts for ${selectedTimeRange}`);
@@ -121,16 +120,17 @@ export default function Index() {
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
     try {
-      const response = await fetch(`/proxy?timeRange=${selectedTimeRange}`, {
+      const response = await fetch("/proxy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timeRange: selectedTimeRange }),
       });
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Error: ${response.status} - ${errorText}`);
       }
       const data = await response.json();
-      // Erwartet wird, dass der Proxy "transcriptsPerDay" zurückgibt
+      // Der Proxy liefert "transcriptsPerDay" zurück
       const transcriptsPerDay = data.transcriptsPerDay || {};
       const dailyTranscripts: DailyInteractionData[] = [];
       for (let i = 0; i < days; i++) {
@@ -147,7 +147,7 @@ export default function Index() {
     }
   };
 
-  // 2) Revenue-Daten via Endpunkt
+  // 2) Revenue-Daten abrufen (angenommener Endpunkt /daily-data)
   const fetchDailyRevenue = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
     if (cachedRevenue[selectedTimeRange]) {
       console.log(`Using cached revenue data for ${selectedTimeRange}`);
@@ -171,7 +171,7 @@ export default function Index() {
     }
   };
 
-  // 3) Gesamtdaten laden (Analytics, Transcripts, Revenue)
+  // 3) Gesamtdaten (Analytics, Transcripts, Revenue) laden
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
     try {
@@ -181,15 +181,14 @@ export default function Index() {
       const dailyRevenueData = await fetchDailyRevenue(selectedTimeRange);
       setDailyRevenue(dailyRevenueData);
 
+      // Analytics-Daten (hier werden die Transkripte auch für weitere Berechnungen genutzt)
       try {
         const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
         console.log("Dashboard - Fetching analytics data with time range:", { startTime, endTime });
         const response = await fetch("/proxy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            timeRange: selectedTimeRange,
-          }),
+          body: JSON.stringify({ timeRange: selectedTimeRange }),
         });
           
         if (!response.ok) {
@@ -236,8 +235,8 @@ export default function Index() {
     fetchDashboardData(timeRange);
   }, [timeRange]);
 
-  const dynamicLabels = dailyInteractions
-    ?.map((entry) => {
+  const dynamicLabels =
+    dailyInteractions?.map((entry) => {
       const date = new Date(entry.date);
       date.setDate(date.getDate() + 1);
       return date.toLocaleDateString("de-DE", {
@@ -245,8 +244,7 @@ export default function Index() {
         month: "2-digit",
         year: "2-digit",
       });
-    })
-    || [];
+    }) || [];
 
   const transcriptsData = dailyInteractions?.map((entry) => entry.count) || [];
   const purchasesData = dailyRevenue?.map((entry) => entry.purchases) || [];
