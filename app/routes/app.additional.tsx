@@ -84,14 +84,21 @@ export default function TranscriptViewer() {
   
       const data = await response.json();
       console.log("API Response:", data); // Debugging
-      setTranscripts(data); // Nutzt das "transcripts"-Feld aus der API-Antwort
+      
+      // Ensure data is an array before setting it
+      if (Array.isArray(data)) {
+        setTranscripts(data);
+      } else {
+        console.error("API did not return an array:", data);
+        setTranscripts([]);
+      }
     } catch (error) {
       console.error("Error fetching transcripts:", error);
       setTranscripts([]);
     } finally {
       setLoading(false);
     }
-  };  
+  };
 
   // API-Call 2: Details eines Transkripts
   const fetchTranscriptDetails = async (transcriptID: string) => {
