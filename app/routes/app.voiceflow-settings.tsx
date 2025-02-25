@@ -63,6 +63,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   };
 
   try {
+    // First, fetch the shop ID
+    const shopResponse = await admin.graphql(
+      `query {
+        shop {
+          id
+        }
+      }`
+    );
+    
+    const shopData = await shopResponse.json();
+    const shopId = shopData.data.shop.id;
+    
+    // Now save the metafields with the shop ID as the owner
     const response = await admin.graphql(
       `mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
         metafieldsSet(metafields: $metafields) {
@@ -85,6 +98,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
               key: "api_credentials",
               value: JSON.stringify(settings),
               type: "json",
+              ownerId: shopId
             },
           ],
         },
