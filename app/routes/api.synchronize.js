@@ -76,7 +76,7 @@ export const action = async ({ request }) => {
       const isAvailable = product.variants.some(
         (variant) => variant.inventory_quantity > 0
       );
-      const availabilityText = isAvailable ? "verfügbar" : "Ausverkauft!";
+      const availabilityText = isAvailable ? "Dieses Produkt ist Verfügbar und kann erworben werden." : "Dieses Produkt ist Ausverkauft und kann derzeit nicht gekauft werden!";
 
       // Statischer Custom-Tag "Produkte"
       const customTag = "Produkte";
@@ -109,7 +109,8 @@ export const action = async ({ request }) => {
             "ProductName",
             "ProductDescription",
             "ProductTagsStr",
-            "CustomTag"
+            "CustomTag",
+            "Availability"
           ],
           metadataFields: [
             "ProductID",
