@@ -1,5 +1,3 @@
-// app/routes/_index.tsx
-
 import { useEffect, useState } from "react";
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
@@ -38,7 +36,7 @@ ChartJS.register(
   Legend
 );
 
-// Define the type for our loader data
+// Typen für Loader-Daten und weitere Datenmodelle
 interface LoaderData {
   vf_key: string;
   vf_project_id: string;
@@ -74,18 +72,15 @@ interface Transcript {
   image?: string;
 }
 
-interface ApiResult {
-  result: Array<{
-    count?: number;
-    intents?: IntentData[];
-    dailyInteractions?: DailyInteractionData[];
-    dailyRevenue?: DailyRevenueData[];
-    averageSessionDuration?: number;
-    messagesExchanged?: number;
-    errorRate?: number;
-    newUsers?: number;
-  }>;
-}
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  await authenticate.admin(request);
+  const settings = await getVoiceflowSettings(request);
+  return json<LoaderData>({
+    vf_key: settings.vf_key,
+    vf_project_id: settings.vf_project_id,
+    vf_version_id: settings.vf_version_id
+  });
+};
 
 const timeRanges = [
   { label: "Last 7 Days", value: "7d" },
@@ -102,21 +97,7 @@ const calculateTimeRange = (timeRange: string): { startTime: string; endTime: st
   return { startTime, endTime };
 };
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  
-  // Fetch Voiceflow settings from metafields
-  const settings = await getVoiceflowSettings(request);
-  
-  return json<LoaderData>({
-    vf_key: settings.vf_key,
-    vf_project_id: settings.vf_project_id,
-    vf_version_id: settings.vf_version_id
-  });
-};
-
 export default function Index() {
-  // Get Voiceflow settings from loader
   const { vf_key, vf_project_id, vf_version_id } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
   const [uniqueUsers, setUniqueUsers] = useState<number | null>(null);
@@ -129,7 +110,7 @@ export default function Index() {
   const [cachedData, setCachedData] = useState<Record<string, DailyInteractionData[]>>({});
   const [cachedRevenue, setCachedRevenue] = useState<Record<string, DailyRevenueData[]>>({});
 
-  // 1) Daily Transcripts via den Proxy (jetzt zählt /proxy die Transkripte pro Tag)
+  // 1) Transkripte pro Tag via Proxy
   const fetchDailyTranscripts = async (selectedTimeRange: string) => {
     if (cachedData[selectedTimeRange]) {
       console.log(`Using cached transcripts for ${selectedTimeRange}`);
@@ -149,7 +130,7 @@ export default function Index() {
         throw new Error(`Error: ${response.status} - ${errorText}`);
       }
       const data = await response.json();
-      // Wir erwarten, dass der Proxy transcriptsPerDay zurückgibt
+      // Erwartet wird, dass der Proxy "transcriptsPerDay" zurückgibt
       const transcriptsPerDay = data.transcriptsPerDay || {};
       const dailyTranscripts: DailyInteractionData[] = [];
       for (let i = 0; i < days; i++) {
@@ -166,7 +147,7 @@ export default function Index() {
     }
   };
 
-  // 2) Revenue via den daily-data Endpunkt mit Übergabe des Zeitbereichs
+  // 2) Revenue-Daten via Endpunkt
   const fetchDailyRevenue = async (selectedTimeRange: string): Promise<DailyRevenueData[]> => {
     if (cachedRevenue[selectedTimeRange]) {
       console.log(`Using cached revenue data for ${selectedTimeRange}`);
@@ -180,7 +161,6 @@ export default function Index() {
         const errorText = await response.text();
         throw new Error(`Error: ${response.status} - ${errorText}`);
       }
-      // Hier verwenden wir "dailyData", wie es der Loader in daily-data.js zurückgibt
       const data: { dailyData: DailyRevenueData[] } = await response.json();
       const revenueData = data.dailyData || [];
       setCachedRevenue((prev) => ({ ...prev, [selectedTimeRange]: revenueData }));
@@ -195,7 +175,6 @@ export default function Index() {
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
     try {
-      // Nutze fetchDailyTranscripts anstelle von fetchDailyInteractions
       const dailyTranscriptsData = await fetchDailyTranscripts(selectedTimeRange);
       setDailyInteractions(dailyTranscriptsData);
 
@@ -205,68 +184,44 @@ export default function Index() {
       try {
         const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
         console.log("Dashboard - Fetching analytics data with time range:", { startTime, endTime });
-        
-          // Simplified API call - just fetch the proxy data without the complex query
-          const response = await fetch("/proxy", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              timeRange: selectedTimeRange,
-            }),
-          });
+        const response = await fetch("/proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            timeRange: selectedTimeRange,
+          }),
+        });
           
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Dashboard - API request failed: ${response.status} ${response.statusText}`, errorText);
-            // Continue with default values instead of throwing
-          } else {
-            const data = await response.json();
-            console.log("Dashboard - Analytics API response:", data);
-            
-            // Handle the actual response format we're receiving
-            if (data) {
-              // The API returns an object with transcripts and transcriptsPerDay
-              // We can use this data for our analytics
-              
-              // Count of transcripts can be used for sessions
-              const transcriptCount = Array.isArray(data.transcripts) ? data.transcripts.length : 0;
-              setSessions(transcriptCount);
-              
-              // We don't have top intents in this response, so use empty array
-              setTopIntents([]);
-              
-              // Count unique users from transcripts if available
-              let uniqueUserCount = 0;
-              if (Array.isArray(data.transcripts)) {
-                const uniqueUsers = new Set();
-                data.transcripts.forEach((transcript: Transcript) => {
-                  if (transcript.sessionID) {
-                    uniqueUsers.add(transcript.sessionID);
-                  }
-                });
-                uniqueUserCount = uniqueUsers.size;
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Dashboard - API request failed: ${response.status} ${response.statusText}`, errorText);
+        } else {
+          const data = await response.json();
+          console.log("Dashboard - Analytics API response:", data);
+          const transcriptCount = Array.isArray(data.transcripts) ? data.transcripts.length : 0;
+          setSessions(transcriptCount);
+          setTopIntents([]);
+          let uniqueUserCount = 0;
+          if (Array.isArray(data.transcripts)) {
+            const uniqueUsers = new Set();
+            data.transcripts.forEach((transcript: Transcript) => {
+              if (transcript.sessionID) {
+                uniqueUsers.add(transcript.sessionID);
               }
-              setUniqueUsers(uniqueUserCount);
-              
-              console.log(`Dashboard - Processed analytics: ${transcriptCount} transcripts, ${uniqueUserCount} unique users`);
-            } else {
-              console.error("Dashboard - Empty API response");
-              // Set default values
-              setSessions(0);
-              setTopIntents([]);
-              setUniqueUsers(0);
-            }
+            });
+            uniqueUserCount = uniqueUsers.size;
           }
+          setUniqueUsers(uniqueUserCount);
+          console.log(`Dashboard - Processed analytics: ${transcriptCount} transcripts, ${uniqueUserCount} unique users`);
+        }
       } catch (apiError) {
         console.error("Dashboard - Error fetching analytics data:", apiError);
-        // Set default values for analytics data
         setSessions(0);
         setTopIntents([]);
         setUniqueUsers(0);
       }
     } catch (error) {
       console.error("Dashboard - Error fetching dashboard data:", error);
-      // Set default values for all data
       setDailyInteractions([]);
       setDailyRevenue([]);
       setSessions(0);
@@ -297,7 +252,6 @@ export default function Index() {
   const purchasesData = dailyRevenue?.map((entry) => entry.purchases) || [];
   const revenueData = dailyRevenue?.map((entry) => entry.revenue) || [];
 
-  // Erstes Diagramm zeigt Transkripte und Käufe pro Tag (Linien-Diagramm)
   const lineChartData = {
     labels: dynamicLabels,
     datasets: [
@@ -318,7 +272,6 @@ export default function Index() {
     ],
   };
 
-  // Zweites Diagramm zeigt Daily Revenue (Balken-Diagramm)
   const revenueChartData = {
     labels: dynamicLabels,
     datasets: [
