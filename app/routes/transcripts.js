@@ -56,12 +56,12 @@ export const loader = async ({ request }) => {
       console.log("Transcripts loader - API response received");
       
       // Wenn transcripts nicht vorhanden ist, benutze ein leeres Array
-      const transcripts = data.transcripts || [];
+      const transcripts = Array.isArray(data) ? data : [];
       console.log(`Transcripts loader - Processing ${transcripts.length} transcripts`);
 
       const transcriptsByDate = {};
       transcripts.forEach((transcript) => {
-        const transcriptDate = new Date(transcript.timestamp);
+        const transcriptDate = new Date(transcript.createdAt);
         if (transcriptDate >= startDate) {
           const dateKey = transcriptDate.toISOString().split("T")[0];
           if (!transcriptsByDate[dateKey]) {
