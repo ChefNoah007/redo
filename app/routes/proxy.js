@@ -1,34 +1,43 @@
-// app/routes/proxy.js
-
 import { json } from "@remix-run/node";
 import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
 
 export const action = async ({ request }) => {
   try {
-    // Fetch Voiceflow settings from metafields
+    // Voiceflow-Einstellungen abrufen
     const settings = await getVoiceflowSettings(request);
     const API_KEY = settings.vf_key;
     const PROJECT_ID = settings.vf_project_id;
     
-    // Log settings (masked for security)
+    // Einstellungen protokollieren (maskiert)
     console.log("Proxy action - Using Voiceflow settings:", { 
       API_KEY: API_KEY ? "Present (masked)" : "Missing", 
       PROJECT_ID: PROJECT_ID || "Missing" 
     });
 
-    // Validate settings
+    // Prüfen, ob die notwendigen Einstellungen vorhanden sind
     if (!API_KEY || !PROJECT_ID) {
       console.error("Proxy action - Missing required Voiceflow settings");
-      return json({ 
-        error: "Missing required Voiceflow settings" 
-      }, { status: 400 });
+      return json({ error: "Missing required Voiceflow settings" }, { status: 400 });
     }
 
     const VOICEFLOW_API_TRANSCRIPTS_URL = `https://api.voiceflow.com/v2/transcripts/${PROJECT_ID}`;
     console.log("Proxy action - Fetching from URL:", VOICEFLOW_API_TRANSCRIPTS_URL);
 
+    // timeRange-Parameter aus Query-String oder Request-Body ermitteln
+    const url = new URL(request.url);
+    let timeRange = url.searchParams.get("timeRange");
+    if (!timeRange) {
+      try {
+        const body = await request.json();
+        timeRange = body.timeRange;
+      } catch (jsonError) {
+        console.warn("Proxy action - No valid JSON body for timeRange parameter");
+      }
+    }
+    console.log("Proxy action - Received timeRange:", timeRange);
+
     try {
-      // Die Fetch Project Transcripts API wird per GET aufgerufen.
+      // Transkripte von der Voiceflow API abrufen
       const response = await fetch(VOICEFLOW_API_TRANSCRIPTS_URL, {
         method: "GET",
         headers: {
@@ -40,32 +49,43 @@ export const action = async ({ request }) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Proxy action - API request failed: ${response.status} ${response.statusText}`, errorText);
-        return json({ 
-          error: `Failed to fetch transcripts: ${response.statusText}` 
-        }, { status: response.status });
+        return json({ error: `Failed to fetch transcripts: ${response.statusText}` }, { status: response.status });
       }
 
       const data = await response.json();
       console.log("Proxy action - API response received");
-      
-      // Ensure data is valid
-      if (!data || typeof data !== 'object') {
+
+      // Überprüfen, ob die API ein gültiges Objekt liefert
+      if (!data || typeof data !== "object") {
         console.error("Proxy action - API did not return valid data:", data);
-        return json({ 
-          error: "Invalid response format from API" 
-        }, { status: 500 });
+        return json({ error: "Invalid response format from API" }, { status: 500 });
       }
       
-      // Extract transcripts array, default to empty if not present
-      const transcripts = Array.isArray(data.transcripts) ? data.transcripts : [];
-      console.log(`Proxy action - Processing ${transcripts.length} transcripts`);
+      // Transkripte extrahieren (Standard: leeres Array)
+      let transcripts = Array.isArray(data.transcripts) ? data.transcripts : [];
+      console.log(`Proxy action - Fetched ${transcripts.length} transcripts from API`);
 
-      // Gruppierung der Transcripts pro Tag (angenommen, jedes Transcript enthält ein "createdAt"-Feld im ISO-Format)
+      // Falls ein timeRange-Parameter vorhanden ist, filtern wir die Transkripte
+      if (timeRange) {
+        const days = parseInt(timeRange.replace("d", ""), 10);
+        if (!isNaN(days)) {
+          const thresholdDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+          transcripts = transcripts.filter((transcript) => {
+            if (transcript.createdAt) {
+              return new Date(transcript.createdAt) >= thresholdDate;
+            }
+            return false;
+          });
+          console.log(`Proxy action - Filtered transcripts to last ${days} days, resulting in ${transcripts.length} transcripts`);
+        } else {
+          console.warn("Proxy action - Invalid timeRange format, skipping filtering");
+        }
+      }
+
+      // Gruppierung der Transkripte pro Tag (angenommen, transcript.createdAt liegt im ISO-Format vor)
       const transcriptsPerDay = {};
-
       transcripts.forEach((transcript) => {
         if (transcript.createdAt) {
-          // Extrahiere das Datum (YYYY-MM-DD) aus dem Timestamp
           const date = new Date(transcript.createdAt).toISOString().split("T")[0];
           transcriptsPerDay[date] = (transcriptsPerDay[date] || 0) + 1;
         }
@@ -75,14 +95,10 @@ export const action = async ({ request }) => {
       return json({ transcripts, transcriptsPerDay });
     } catch (apiError) {
       console.error("Proxy action - Error processing API request:", apiError);
-      return json({ 
-        error: `API error: ${apiError.message}` 
-      }, { status: 500 });
+      return json({ error: `API error: ${apiError.message}` }, { status: 500 });
     }
   } catch (error) {
     console.error("Proxy action - Unexpected error:", error);
-    return json({ 
-      error: `Unexpected error: ${error.message}` 
-    }, { status: 500 });
+    return json({ error: `Unexpected error: ${error.message}` }, { status: 500 });
   }
 };
