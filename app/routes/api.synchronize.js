@@ -15,7 +15,7 @@ const shopify = shopifyApi({
 });
 
 export const action = async ({ request }) => {
-  // Fetch Voiceflow settings from metafields
+  // Voiceflow-Settings aus den Metafeldern abrufen
   const settings = await getVoiceflowSettings(request);
   try {
     const body = await request.json();
@@ -49,29 +49,38 @@ export const action = async ({ request }) => {
       nextPageCursor = pageInfo?.nextPage?.query.page_info;
       hasNextPage = Boolean(nextPageCursor);
     }
+
     const normalizedItems = allProducts.map((product) => {
       const removeHtmlRegex = /<[^>]*>?/gm;
       const removeNewlinesRegex = /[\r\n\t]+/g;
-    
+
       let desc = product.body_html || "";
       desc = desc.replace(removeHtmlRegex, "").replace(removeNewlinesRegex, " ").trim();
-    
+
       let name = product.title || "";
       name = name.replace(removeNewlinesRegex, " ").trim();
-    
+
       const productUrl = product.online_store_url || `https://${shopDomain}/products/${product.handle}`;
-    
+
+      // Varianten mit Lagerbestand mappen
       const variants = product.variants.map((variant) => ({
         title: variant.title || "Default",
-        price: variant.price ? parseFloat(variant.price) : null
+        price: variant.price ? parseFloat(variant.price) : null,
+        inventory_quantity: variant.inventory_quantity
       }));
-    
+
       const images = product.images.map((img) => img.src);
       const tags = product.tags ? product.tags.split(",").map((tag) => tag.trim()) : [];
-    
+
+      // Überprüfen, ob mindestens eine Variante einen positiven Lagerbestand hat
+      const isAvailable = product.variants.some(
+        (variant) => variant.inventory_quantity > 0
+      );
+      const availabilityText = isAvailable ? "verfügbar" : "Ausverkauft!";
+
       // Statischer Custom-Tag "Produkte"
       const customTag = "Produkte";
-    
+
       return {
         ProductID: product.id.toString(),
         ProductName: name,
@@ -82,12 +91,12 @@ export const action = async ({ request }) => {
         ProductTags: tags,                     // Komplexer Typ, nur in metadataFields
         ProductTagsStr: tags.join(", "),       // Einfacher String für die Suche
         ProductImages: images,                 // Komplexer Typ, nur in metadataFields
-        CustomTag: customTag                   // Statischer Custom-Tag "Produkte"
+        CustomTag: customTag,                  // Statischer Custom-Tag "Produkte"
+        Availability: availabilityText         // Neu: "verfügbar" oder "Ausverkauft!" basierend auf inventory_quantity
       };
     });
-    
 
-    // Voiceflow URL mit optionalem `overwrite`
+    // Voiceflow URL mit optionalem overwrite-Parameter
     let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload/table";
     if (overwrite) {
       voiceflowUrl += "?overwrite=true";
@@ -100,7 +109,7 @@ export const action = async ({ request }) => {
             "ProductName",
             "ProductDescription",
             "ProductTagsStr",
-            "CustomTag"  // Custom-Tag als einfacher String
+            "CustomTag"
           ],
           metadataFields: [
             "ProductID",
@@ -111,7 +120,8 @@ export const action = async ({ request }) => {
             "ProductVariants",
             "ProductTags",
             "ProductImages",
-            "CustomTag"
+            "CustomTag",
+            "Availability" // Neues Feld für die Verfügbarkeitsanzeige
           ],
         },
         name: "ShopifyProdukte",
