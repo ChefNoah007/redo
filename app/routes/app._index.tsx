@@ -61,6 +61,19 @@ interface DailyRevenueData {
   purchases?: number;
 }
 
+interface Transcript {
+  _id: string;
+  sessionID?: string;
+  createdAt?: string;
+  projectID?: string;
+  browser?: string;
+  device?: string;
+  os?: string;
+  updatedAt?: string;
+  name?: string;
+  image?: string;
+}
+
 interface ApiResult {
   result: Array<{
     count?: number;
@@ -193,65 +206,57 @@ export default function Index() {
         const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
         console.log("Dashboard - Fetching analytics data with time range:", { startTime, endTime });
         
-        const response = await fetch("/proxy", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query: [
-              {
-                name: "sessions",
-                filter: {
-                  projectID: vf_project_id,
-                  startTime,
-                  endTime,
-                  platform: { not: "canvas-prototype" },
-                },
-              },
-              {
-                name: "top_intents",
-                filter: {
-                  projectID: vf_project_id,
-                  limit: 5,
-                  startTime,
-                  endTime,
-                  platform: { not: "canvas-prototype" },
-                },
-              },
-              {
-                name: "unique_users",
-                filter: {
-                  projectID: vf_project_id,
-                  startTime,
-                  endTime,
-                  platform: { not: "canvas-prototype" },
-                },
-              },
-            ],
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Dashboard - API request failed: ${response.status} ${response.statusText}`, errorText);
-          // Continue with default values instead of throwing
-        } else {
-          const data = await response.json();
-          console.log("Dashboard - Analytics API response:", data);
+          // Simplified API call - just fetch the proxy data without the complex query
+          const response = await fetch("/proxy", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              timeRange: selectedTimeRange,
+            }),
+          });
           
-          // Validate the response structure
-          if (data && data.result && Array.isArray(data.result)) {
-            // Safe access to data with fallbacks
-            setSessions(data.result[0]?.count ?? 0);
-            setTopIntents(data.result[1]?.intents ?? []);
-            setUniqueUsers(data.result[2]?.count ?? 0);
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Dashboard - API request failed: ${response.status} ${response.statusText}`, errorText);
+            // Continue with default values instead of throwing
           } else {
-            console.error("Dashboard - Invalid API response format:", data);
-            // Set default values
-            setSessions(0);
-            setTopIntents([]);
-            setUniqueUsers(0);
+            const data = await response.json();
+            console.log("Dashboard - Analytics API response:", data);
+            
+            // Handle the actual response format we're receiving
+            if (data) {
+              // The API returns an object with transcripts and transcriptsPerDay
+              // We can use this data for our analytics
+              
+              // Count of transcripts can be used for sessions
+              const transcriptCount = Array.isArray(data.transcripts) ? data.transcripts.length : 0;
+              setSessions(transcriptCount);
+              
+              // We don't have top intents in this response, so use empty array
+              setTopIntents([]);
+              
+              // Count unique users from transcripts if available
+              let uniqueUserCount = 0;
+              if (Array.isArray(data.transcripts)) {
+                const uniqueUsers = new Set();
+                data.transcripts.forEach((transcript: Transcript) => {
+                  if (transcript.sessionID) {
+                    uniqueUsers.add(transcript.sessionID);
+                  }
+                });
+                uniqueUserCount = uniqueUsers.size;
+              }
+              setUniqueUsers(uniqueUserCount);
+              
+              console.log(`Dashboard - Processed analytics: ${transcriptCount} transcripts, ${uniqueUserCount} unique users`);
+            } else {
+              console.error("Dashboard - Empty API response");
+              // Set default values
+              setSessions(0);
+              setTopIntents([]);
+              setUniqueUsers(0);
+            }
           }
-        }
       } catch (apiError) {
         console.error("Dashboard - Error fetching analytics data:", apiError);
         // Set default values for analytics data
