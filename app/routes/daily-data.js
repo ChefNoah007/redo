@@ -98,7 +98,8 @@ export async function loader({ request }) {
         id: order.id,
         created_at: order.created_at,
         total_price: order.total_price,
-        order_number: order.order_number
+        order_number: order.order_number,
+        userID: order.note_attributes?.find(attr => attr.name === "VF_UserID")?.value || null
       }))
     }, { status: 200 });
   } catch (error) {

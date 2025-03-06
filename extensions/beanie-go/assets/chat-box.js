@@ -127,29 +127,30 @@ function delay(ms) {
  * NEU: Statt Cookie -> Warenkorb-Attribut 'usedChat' setzen
  */
 function setUsedChatAttribute() {
-  console.log("Versuche, usedChat-Attribut im Warenkorb zu setzen...");
+  console.log("Versuche, usedChat und VF_UserID im Warenkorb zu setzen...");
   // 1) Aktuellen Cart laden (optional, aber üblich)
   fetch("/cart.js")
     .then((res) => res.json())
     .then((cart) => {
       console.log("Aktueller Cart:", cart);
-      // 2) Nun POST auf /cart/update.js, um das Attribut zu setzen
+      // 2) POST auf /cart/update.js, um die Attribute zu setzen
       return fetch("/cart/update.js", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           attributes: {
             usedChat: "true",
+            VF_UserID: userID // Voiceflow UserID hinzufügen
           },
         }),
       });
     })
     .then((res) => res.json())
     .then((updatedCart) => {
-      console.log("Warenkorb-Attribut 'usedChat' gesetzt:", updatedCart.attributes);
+      console.log("Warenkorb-Attribute gesetzt:", updatedCart.attributes);
     })
     .catch((err) => {
-      console.error("Fehler beim Setzen des usedChat-Attributs:", err);
+      console.error("Fehler beim Setzen der Attribute:", err);
     });
 }
 

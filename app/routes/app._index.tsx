@@ -63,6 +63,7 @@ interface ChatOrder {
   created_at: string;
   total_price: string;
   order_number: string;
+  userID?: string;
 }
 
 interface Transcript {
@@ -405,6 +406,9 @@ export default function Index() {
                         Bestellung #{order.order_number} - {orderDate.toLocaleDateString('de-DE')} um {orderDate.toLocaleTimeString('de-DE')}
                       </Text>
                       <Text as="p">Betrag: €{order.total_price}</Text>
+                      {order.userID && (
+                        <Text as="p">UserID: {order.userID}</Text>
+                      )}
                     </div>
                   );
                 })}
