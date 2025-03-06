@@ -330,10 +330,21 @@ export default function TranscriptViewer() {
             <Text as="h2" variant="headingMd">
               Transcript Details
             </Text>
-            {/* Debug-Toggle */}
-            <Button onClick={() => setShowDebug((prev) => !prev)} size="slim">
-              {showDebug ? "Hide Debug" : "Show Debug"}
-            </Button>
+
+            {selectedTranscript && (
+              <Text as="p">
+                Transcript successfully loaded.
+              </Text>
+            )}
+
+            {selectedTranscript && (
+              <div style={{ marginBottom: "10px" }}>
+                <Button onClick={() => setShowDebug((prev) => !prev)} size="slim">
+                  {showDebug ? "Hide Debug" : "Show Debug"}
+                </Button>
+              </div>
+            )}
+
             {loading ? (
               <Spinner size="small" />
             ) : selectedTranscript ? (
@@ -347,7 +358,14 @@ export default function TranscriptViewer() {
                         msg.sender === "user"
                           ? userMessageStyle
                           : msg.sender === "debug"
-                          ? debugMessageStyle
+                          ? {
+                              ...messageStyle,
+                              backgroundColor: "transparent", // kein Hintergrund
+                              color: "#a67c00",
+                              alignSelf: "center",
+                              textAlign: "center" as const,
+                              fontSize: "0.8rem", // kleinere Schrift
+                            }
                           : systemMessageStyle
                       }
                     >
