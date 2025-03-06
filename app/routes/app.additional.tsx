@@ -66,6 +66,7 @@ export default function TranscriptViewer() {
   const [selectedTranscript, setSelectedTranscript] = useState<TranscriptDetail | null>(null); // Details eines Transkripts
   const [loading, setLoading] = useState(false);
   const [selectedID, setSelectedID] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   // API-Call 1: Transkriptübersicht
   const fetchTranscripts = async () => {
@@ -189,6 +190,11 @@ export default function TranscriptViewer() {
                 sender: "user",
                 text: item.payload?.payload?.label || null,
               };
+            case "debug":
+              return {
+                sender: "debug",
+                text: item.payload?.payload?.message || null,
+              };
             default:
               return null; // Überspringt unsupported Typen
           }
@@ -244,6 +250,15 @@ export default function TranscriptViewer() {
     alignSelf: 'flex-start',
   };
     
+  // 3. Einen eigenen Style für Debug-Nachrichten definieren:
+  const debugMessageStyle = {
+    ...messageStyle,
+    backgroundColor: '#fff5e6', // Beispielhintergrund
+    color: '#a67c00', // Beispieltextfarbe
+    alignSelf: 'center',
+    textAlign: 'center' as 'center',
+  };
+  
   const chatContainerStyle: CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
@@ -315,26 +330,42 @@ export default function TranscriptViewer() {
             <Text as="h2" variant="headingMd">
               Transcript Details
             </Text>
+            {/* Debug-Toggle */}
+            <Button onClick={() => setShowDebug((prev) => !prev)} size="slim">
+              {showDebug ? "Hide Debug" : "Show Debug"}
+            </Button>
             {loading ? (
               <Spinner size="small" />
             ) : selectedTranscript ? (
               <div style={chatContainerStyle}>
-                {selectedTranscript.messages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    style={msg.sender === "user" ? userMessageStyle : systemMessageStyle}
-                  >
-                    <ReactMarkdown
-                      components={{
-                        img: ({ src, alt }) => (
-                          <img src={src || ""} alt={alt || ""} style={{ maxWidth: '200px' }} />
-                        ),
-                      }}
+                {selectedTranscript.messages
+                  .filter((msg) => (showDebug ? true : msg.sender !== "debug"))
+                  .map((msg, idx) => (
+                    <div
+                      key={idx}
+                      style={
+                        msg.sender === "user"
+                          ? userMessageStyle
+                          : msg.sender === "debug"
+                          ? debugMessageStyle
+                          : systemMessageStyle
+                      }
                     >
-                      {msg.text}
-                    </ReactMarkdown>
-                  </div>
-                ))}
+                      <ReactMarkdown
+                        components={{
+                          img: ({ src, alt }) => (
+                            <img
+                              src={src || ""}
+                              alt={alt || ""}
+                              style={{ maxWidth: "200px" }}
+                            />
+                          ),
+                        }}
+                      >
+                        {msg.text}
+                      </ReactMarkdown>
+                    </div>
+                  ))}
               </div>
             ) : (
               <Text as="p">Select a transcript to view details</Text>
