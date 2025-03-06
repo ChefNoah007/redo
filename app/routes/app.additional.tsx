@@ -173,14 +173,22 @@ export default function TranscriptViewer() {
               return {
                 sender: "bot",
                 text: item.payload?.payload?.message || null,
-              };        
-  
+              };
+            case "visual":
+              // Falls visualType "image" vorliegt, als Markdown-Bild ausgeben
+              if (item.payload?.payload?.visualType === "image" && item.payload?.payload?.image) {
+                return {
+                  sender: "bot",
+                  text: `![visual message](${item.payload.payload.image})`,
+                };
+              }
+              return null;
             case "request":
+              // Verwende label statt query, falls vorhanden
               return {
                 sender: "user",
-                text: item.payload?.payload?.query || null,
+                text: item.payload?.payload?.label || null,
               };
-  
             default:
               return null; // Überspringt unsupported Typen
           }
