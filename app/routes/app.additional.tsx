@@ -14,6 +14,7 @@ import {
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
+import ReactMarkdown from 'react-markdown';
 
 // Define the type for our loader data
 interface LoaderData {
@@ -315,7 +316,7 @@ export default function TranscriptViewer() {
                     key={idx}
                     style={msg.sender === "user" ? userMessageStyle : systemMessageStyle}
                   >
-                    {msg.text}
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
                   </div>
                 ))}
               </div>
