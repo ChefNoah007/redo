@@ -324,7 +324,15 @@ export default function TranscriptViewer() {
                     key={idx}
                     style={msg.sender === "user" ? userMessageStyle : systemMessageStyle}
                   >
-                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                    <ReactMarkdown
+                      components={{
+                        img: ({ src, alt }) => (
+                          <img src={src || ""} alt={alt || ""} style={{ maxWidth: '200px' }} />
+                        ),
+                      }}
+                    >
+                      {msg.text}
+                    </ReactMarkdown>
                   </div>
                 ))}
               </div>
