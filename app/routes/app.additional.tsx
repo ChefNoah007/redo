@@ -267,6 +267,25 @@ export default function TranscriptViewer() {
     textAlign: 'center' as const,
     fontSize: '0.5rem', // kleinere Schrift
   };
+
+  const flowStartMessageStyle = {
+    display: "flex",
+    alignItems: "center",
+    margin: "10px 0",
+  };
+  
+  const flowStartTextStyle = {
+    flex: 1,
+    height: "1px",
+    background: "#e0e0e0",
+  };
+  
+  const flowStartTextContainerStyle = {
+    padding: "0 10px",
+    color: "#888",
+    fontSize: "0.5rem",
+    whiteSpace: "nowrap",
+  };
   
   const chatContainerStyle: CSSProperties = {
     display: 'flex',
@@ -359,38 +378,12 @@ export default function TranscriptViewer() {
                     if (msg.sender === "flow-start") {
                       // Spezielle Darstellung: eine Linie mit zentriertem Text.
                       return (
-                        <div
-                          key={idx}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            margin: "10px 0",
-                          }}
-                        >
-                          <div
-                            style={{
-                              flex: 1,
-                              height: "1px",
-                              background: "#e0e0e0",
-                            }}
-                          ></div>
-                          <div
-                            style={{
-                              padding: "0 10px",
-                              color: "#888",
-                              fontSize: "0.9rem",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
+                        <div key={idx} style={flowStartMessageStyle}>
+                          <div style={flowStartTextStyle}></div>
+                          <div style={flowStartTextContainerStyle}>
                             {msg.text}
                           </div>
-                          <div
-                            style={{
-                              flex: 1,
-                              height: "1px",
-                              background: "#e0e0e0",
-                            }}
-                          ></div>
+                          <div style={flowStartTextStyle}></div>
                         </div>
                       );
                     }
@@ -401,14 +394,7 @@ export default function TranscriptViewer() {
                           msg.sender === "user"
                             ? userMessageStyle
                             : msg.sender === "debug"
-                            ? {
-                                ...messageStyle,
-                                backgroundColor: "transparent", // kein Hintergrund
-                                color: "#a67c00",
-                                alignSelf: "center",
-                                textAlign: "center" as const,
-                                fontSize: "0.8rem", // kleinere Schrift
-                              }
+                            ? debugMessageStyle
                             : systemMessageStyle
                         }
                       >
