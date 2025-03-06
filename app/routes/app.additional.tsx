@@ -152,7 +152,7 @@ export default function TranscriptViewer() {
     setSelectedID(transcriptID);
     setDetailsLoading(true); // Ladeanzeige starten
     try {
-      const response = await fetch(`https://redo-ia4o.onrender.com/transcripts/${transcriptID}`, {
+      const response = await fetch(`${API_URL}/transcripts/${transcriptID}`, {
         method: "GET",
         headers: {
           Authorization: API_KEY,
@@ -189,6 +189,13 @@ export default function TranscriptViewer() {
                 text: item.payload?.payload?.label || null,
               };
             case "debug":
+              // Falls es sich um einen Flow-Start handelt:
+              if (item.payload?.payload?.type === "start") {
+                return {
+                  sender: "flow-start",
+                  text: "Neue Seite geöffnet",
+                };
+              }
               return {
                 sender: "debug",
                 text: item.payload?.payload?.message || null,
@@ -240,6 +247,7 @@ export default function TranscriptViewer() {
     backgroundColor: '#cce5ff', // Hellblau
     color: '#004085', // Dunkelblau
     alignSelf: 'flex-end',
+    fontSize: '1rem', // größere Schrift
   };
   
   const systemMessageStyle = {
@@ -247,15 +255,17 @@ export default function TranscriptViewer() {
     backgroundColor: '#f8f9fa', // Hellgrau
     color: '#495057', // Dunkelgrau
     alignSelf: 'flex-start',
+    fontSize: '1rem', // größere Schrift
   };
     
   // 3. Einen eigenen Style für Debug-Nachrichten definieren:
   const debugMessageStyle = {
     ...messageStyle,
-    backgroundColor: '#fff5e6', // Beispielhintergrund
-    color: '#a67c00', // Beispieltextfarbe
+    backgroundColor: 'transparent', // kein Hintergrund
+    color: '#a67c00',
     alignSelf: 'center',
-    textAlign: 'center' as 'center',
+    textAlign: 'center' as const,
+    fontSize: '0.8rem', // kleinere Schrift
   };
   
   const chatContainerStyle: CSSProperties = {
@@ -343,40 +353,81 @@ export default function TranscriptViewer() {
             ) : selectedTranscript ? (
               <div style={chatContainerStyle}>
                 {selectedTranscript.messages
-                  .filter((msg) => (showDebug ? true : msg.sender !== "debug"))
-                  .map((msg, idx) => (
-                    <div
-                      key={idx}
-                      style={
-                        msg.sender === "user"
-                          ? userMessageStyle
-                          : msg.sender === "debug"
-                          ? {
-                              ...messageStyle,
-                              backgroundColor: "transparent", // kein Hintergrund
-                              color: "#a67c00",
-                              alignSelf: "center",
-                              textAlign: "center" as const,
-                              fontSize: "0.8rem", // kleinere Schrift
-                            }
-                          : systemMessageStyle
-                      }
-                    >
-                      <ReactMarkdown
-                        components={{
-                          img: ({ src, alt }) => (
-                            <img
-                              src={src || ""}
-                              alt={alt || ""}
-                              style={{ maxWidth: "200px" }}
-                            />
-                          ),
-                        }}
+                  // Zeige Nachrichten, wobei "flow-start" immer durchgelassen wird.
+                  .filter((msg) => msg.sender === "flow-start" || showDebug || msg.sender !== "debug")
+                  .map((msg, idx) => {
+                    if (msg.sender === "flow-start") {
+                      // Spezielle Darstellung: eine Linie mit zentriertem Text.
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            margin: "10px 0",
+                          }}
+                        >
+                          <div
+                            style={{
+                              flex: 1,
+                              height: "1px",
+                              background: "#e0e0e0",
+                            }}
+                          ></div>
+                          <div
+                            style={{
+                              padding: "0 10px",
+                              color: "#888",
+                              fontSize: "0.9rem",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {msg.text}
+                          </div>
+                          <div
+                            style={{
+                              flex: 1,
+                              height: "1px",
+                              background: "#e0e0e0",
+                            }}
+                          ></div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div
+                        key={idx}
+                        style={
+                          msg.sender === "user"
+                            ? userMessageStyle
+                            : msg.sender === "debug"
+                            ? {
+                                ...messageStyle,
+                                backgroundColor: "transparent", // kein Hintergrund
+                                color: "#a67c00",
+                                alignSelf: "center",
+                                textAlign: "center" as const,
+                                fontSize: "0.8rem", // kleinere Schrift
+                              }
+                            : systemMessageStyle
+                        }
                       >
-                        {msg.text}
-                      </ReactMarkdown>
-                    </div>
-                  ))}
+                        <ReactMarkdown
+                          components={{
+                            img: ({ src, alt }) => (
+                              <img
+                                src={src || ""}
+                                alt={alt || ""}
+                                style={{ maxWidth: "200px" }}
+                              />
+                            ),
+                          }}
+                        >
+                          {msg.text}
+                        </ReactMarkdown>
+                      </div>
+                    );
+                  })}
               </div>
             ) : (
               <Text as="p">Select a transcript to view details</Text>
