@@ -247,7 +247,7 @@ export default function TranscriptViewer() {
     backgroundColor: '#cce5ff', // Hellblau
     color: '#004085', // Dunkelblau
     alignSelf: 'flex-end',
-    fontSize: '1rem', // größere Schrift
+    fontSize: '0.8rem', // größere Schrift
   };
   
   const systemMessageStyle = {
@@ -255,7 +255,7 @@ export default function TranscriptViewer() {
     backgroundColor: '#f8f9fa', // Hellgrau
     color: '#495057', // Dunkelgrau
     alignSelf: 'flex-start',
-    fontSize: '1rem', // größere Schrift
+    fontSize: '0.8rem', // größere Schrift
   };
     
   // 3. Einen eigenen Style für Debug-Nachrichten definieren:
@@ -265,7 +265,7 @@ export default function TranscriptViewer() {
     color: '#a67c00',
     alignSelf: 'center',
     textAlign: 'center' as const,
-    fontSize: '0.8rem', // kleinere Schrift
+    fontSize: '0.5rem', // kleinere Schrift
   };
   
   const chatContainerStyle: CSSProperties = {
