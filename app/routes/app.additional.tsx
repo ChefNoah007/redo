@@ -67,6 +67,7 @@ export default function TranscriptViewer() {
   const [loading, setLoading] = useState(false);
   const [selectedID, setSelectedID] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   // API-Call 1: Transkriptübersicht
   const fetchTranscripts = async () => {
@@ -148,7 +149,8 @@ export default function TranscriptViewer() {
   // API-Call 2: Details eines Transkripts
   const fetchTranscriptDetails = async (transcriptID: string) => {
     console.log("Selected Transcript ID:", transcriptID);
-    setSelectedID(transcriptID); // Setzt die ID für den Schatten
+    setSelectedID(transcriptID);
+    setDetailsLoading(true); // Ladeanzeige starten
     try {
       const response = await fetch(`https://redo-ia4o.onrender.com/transcripts/${transcriptID}`, {
         method: "GET",
@@ -163,10 +165,8 @@ export default function TranscriptViewer() {
       }
   
       const data = await response.json();
-  
       console.log("Transcript details API response:", data);
   
-      // Nur unterstützte Nachrichtentypen verarbeiten
       const messages = data
         .map((item: any) => {
           switch (item.type) {
@@ -176,7 +176,6 @@ export default function TranscriptViewer() {
                 text: item.payload?.payload?.message || null,
               };
             case "visual":
-              // Falls visualType "image" vorliegt, als Markdown-Bild ausgeben
               if (item.payload?.payload?.visualType === "image" && item.payload?.payload?.image) {
                 return {
                   sender: "bot",
@@ -185,7 +184,6 @@ export default function TranscriptViewer() {
               }
               return null;
             case "request":
-              // Verwende label statt query, falls vorhanden
               return {
                 sender: "user",
                 text: item.payload?.payload?.label || null,
@@ -196,12 +194,11 @@ export default function TranscriptViewer() {
                 text: item.payload?.payload?.message || null,
               };
             default:
-              return null; // Überspringt unsupported Typen
+              return null;
           }
         })
-        .filter((message: any) => message && message.text); // Entfernt leere Nachrichten
+        .filter((message: any) => message && message.text);
   
-      // Fallback für leere Nachrichtenliste
       if (messages.length === 0) {
         messages.push({ sender: "system", text: "No messages available for this transcript." });
       }
@@ -213,7 +210,9 @@ export default function TranscriptViewer() {
       } else {
         console.error("Unknown error fetching transcript details");
       }
-      setSelectedTranscript(null); // Fehlerbehandlung
+      setSelectedTranscript(null);
+    } finally {
+      setDetailsLoading(false); // Ladeanzeige beenden
     }
   };
   
@@ -332,12 +331,6 @@ export default function TranscriptViewer() {
             </Text>
 
             {selectedTranscript && (
-              <Text as="p">
-                Transcript successfully loaded.
-              </Text>
-            )}
-
-            {selectedTranscript && (
               <div style={{ marginBottom: "10px" }}>
                 <Button onClick={() => setShowDebug((prev) => !prev)} size="slim">
                   {showDebug ? "Hide Debug" : "Show Debug"}
@@ -345,8 +338,8 @@ export default function TranscriptViewer() {
               </div>
             )}
 
-            {loading ? (
-              <Spinner size="small" />
+            {detailsLoading ? (
+              <Text as="p">Loading ...</Text>
             ) : selectedTranscript ? (
               <div style={chatContainerStyle}>
                 {selectedTranscript.messages
