@@ -16,14 +16,17 @@ const shopify = shopifyApi({
 export async function loader({ request }) {
   const shopDomain = "coffee-principles.myshopify.com";
   const offlineSessionId = shopify.session.getOfflineId(shopDomain);
-  // Verwende shopify.config.sessionStorage statt shopify.sessionStorage
   const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
   if (!session) {
-    return json({ success: false, error: `No offline session found for shop ${shopDomain}` }, { status: 500 });
+    return json(
+      { success: false, error: `No offline session found for shop ${shopDomain}` },
+      { status: 500 }
+    );
   }
   
   const client = new shopify.clients.Rest({ session });
   
+  // Metafield abrufen
   const response = await client.get({
     path: "metafields",
     query: {
@@ -43,6 +46,7 @@ export async function loader({ request }) {
     }
   }
   
+  // Falls keine Einstellungen vorhanden sind, erstellen wir das Metafield mit Standardwerten
   if (!settings) {
     settings = {
       hide_on_desktop: false,
@@ -64,6 +68,19 @@ export async function loader({ request }) {
       font_family: "Assistant, sans-serif",
       font_size: 16
     };
+
+    await client.post({
+      path: "metafields",
+      data: {
+        metafield: {
+          namespace: "ai_agents_einstellungen",
+          key: "global",
+          value: JSON.stringify(settings),
+          type: "json_string"
+        }
+      },
+      type: "application/json"
+    });
   }
   
   return json({ success: true, settings });

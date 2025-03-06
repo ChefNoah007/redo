@@ -73,7 +73,6 @@ export default function SettingsPage() {
       outer_radius: outerRadius,
       chat_bubble_radius: chatBubbleRadius,
       input_button_radius: inputButtonRadius,
-      // Neue Felder
       chat_container_width: chatContainerWidth,
       chat_container_padding: chatContainerPadding,
       chat_container_margin: chatContainerMargin,
@@ -121,7 +120,6 @@ export default function SettingsPage() {
                 <TextField type="number" label="Äußerer Container – Border Radius (px)" value={outerRadius.toString()} onChange={(value)=> setOuterRadius(Number(value))} autoComplete="off" />
                 <TextField type="number" label="Chat-Bubbles – Border Radius (px)" value={chatBubbleRadius.toString()} onChange={(value)=> setChatBubbleRadius(Number(value))} autoComplete="off" />
                 <TextField type="number" label="Eingabefeld & Button – Border Radius (px)" value={inputButtonRadius.toString()} onChange={(value)=> setInputButtonRadius(Number(value))} autoComplete="off" />
-                {/* Neue Einstellungsmöglichkeiten */}
                 <TextField label="Chat Container Breite" value={chatContainerWidth} onChange={setChatContainerWidth} autoComplete="off" />
                 <TextField type="number" label="Chat Container Padding (px)" value={chatContainerPadding.toString()} onChange={(value) => setChatContainerPadding(Number(value))} autoComplete="off" />
                 <TextField type="number" label="Chat Container Margin (px)" value={chatContainerMargin.toString()} onChange={(value) => setChatContainerMargin(Number(value))} autoComplete="off" />
