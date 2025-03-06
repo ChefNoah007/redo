@@ -58,6 +58,13 @@ interface DailyRevenueData {
   purchases?: number;
 }
 
+interface ChatOrder {
+  id: string;
+  created_at: string;
+  total_price: string;
+  order_number: string;
+}
+
 interface Transcript {
   _id: string;
   sessionID?: string;
@@ -108,6 +115,7 @@ export default function Index() {
   const [timeRange, setTimeRange] = useState<string>("7d");
   const [cachedData, setCachedData] = useState<Record<string, DailyInteractionData[]>>({});
   const [cachedRevenue, setCachedRevenue] = useState<Record<string, DailyRevenueData[]>>({});
+  const [chatOrders, setChatOrders] = useState<ChatOrder[]>([]);
 
   // 1) Transkripte pro Tag über den Proxy abrufen
   const fetchDailyTranscripts = async (selectedTimeRange: string) => {
@@ -161,8 +169,9 @@ export default function Index() {
         const errorText = await response.text();
         throw new Error(`Error: ${response.status} - ${errorText}`);
       }
-      const data: { dailyData: DailyRevenueData[] } = await response.json();
+      const data: { dailyData: DailyRevenueData[], chatOrders?: ChatOrder[] } = await response.json();
       const revenueData = data.dailyData || [];
+      setChatOrders(data.chatOrders || []);
       setCachedRevenue((prev) => ({ ...prev, [selectedTimeRange]: revenueData }));
       return revenueData;
     } catch (error) {
@@ -374,6 +383,33 @@ export default function Index() {
                 scales: { x: { beginAtZero: true } },
               }}
             />
+          </Card>
+        </Layout.Section>
+
+        <Layout.Section>
+          <Card>
+            <Text as="h3" variant="headingMd">
+              Chat Orders with Timestamps
+            </Text>
+            {isLoading ? (
+              <Text as="p">Loading...</Text>
+            ) : chatOrders.length === 0 ? (
+              <Text as="p">Keine Chat-Bestellungen im ausgewählten Zeitraum.</Text>
+            ) : (
+              <div>
+                {chatOrders.map((order) => {
+                  const orderDate = new Date(order.created_at);
+                  return (
+                    <div key={order.id} style={{ marginBottom: '10px', padding: '10px', borderBottom: '1px solid #e6e6e6' }}>
+                      <Text as="p">
+                        Bestellung #{order.order_number} - {orderDate.toLocaleDateString('de-DE')} um {orderDate.toLocaleTimeString('de-DE')}
+                      </Text>
+                      <Text as="p">Betrag: €{order.total_price}</Text>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
         </Layout.Section>
       </Layout>

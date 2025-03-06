@@ -90,7 +90,17 @@ export async function loader({ request }) {
     }
     console.log("Final daily data:", dailyData);
 
-    return json({ dailyData }, { status: 200 });
+    // Include the filtered chat orders in the response
+    // This will allow the frontend to display individual orders with timestamps
+    return json({ 
+      dailyData,
+      chatOrders: chatOrders.map(order => ({
+        id: order.id,
+        created_at: order.created_at,
+        total_price: order.total_price,
+        order_number: order.order_number
+      }))
+    }, { status: 200 });
   } catch (error) {
     console.error("Error in daily-data loader:", error);
     return json({ success: false, error: error.message }, { status: 500 });
