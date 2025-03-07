@@ -58,16 +58,14 @@ export async function loader({ request }) {
     });
     console.log("Filtered chat orders count:", chatOrders.length);
 
-    // Aggregiere Umsatz und Kaufanzahl pro Datum
+    // Aggregiere Umsatz und Kaufanzahl pro Datum für Chat-Bestellungen
     const revenueByDate = {};
     const purchaseCountByDate = {};
     chatOrders.forEach((order) => {
       const orderDate = new Date(order.created_at);
       const dateKey = orderDate.toISOString().split("T")[0];
-      // Umsatz
       const price = parseFloat(order.total_price || "0");
       revenueByDate[dateKey] = (revenueByDate[dateKey] || 0) + price;
-      // Kaufanzahl
       purchaseCountByDate[dateKey] = (purchaseCountByDate[dateKey] || 0) + 1;
       console.log(
         `Order ${order.id} für Datum ${dateKey} gezählt: price=${price}`
@@ -75,6 +73,15 @@ export async function loader({ request }) {
     });
     console.log("Aggregated revenue by date:", revenueByDate);
     console.log("Aggregated purchase counts by date:", purchaseCountByDate);
+
+    // Neue Aggregation: Alle Bestellungen pro Datum
+    const allOrdersCountByDate = {};
+    allOrders.forEach((order) => {
+      const orderDate = new Date(order.created_at);
+      const dateKey = orderDate.toISOString().split("T")[0];
+      allOrdersCountByDate[dateKey] = (allOrdersCountByDate[dateKey] || 0) + 1;
+    });
+    console.log("Aggregated all orders count by date:", allOrdersCountByDate);
 
     // Erstelle für jeden Tag im Zeitraum einen Eintrag (mit 0, falls keine Daten)
     const dailyData = [];
@@ -86,12 +93,11 @@ export async function loader({ request }) {
         date: dateKey,
         purchases: purchaseCountByDate[dateKey] || 0,
         revenue: revenueByDate[dateKey] || 0,
+        allOrders: allOrdersCountByDate[dateKey] || 0,
       });
     }
     console.log("Final daily data:", dailyData);
 
-    // Include the filtered chat orders in the response
-    // This will allow the frontend to display individual orders with timestamps
     return json({ 
       dailyData,
       chatOrders: chatOrders.map(order => ({

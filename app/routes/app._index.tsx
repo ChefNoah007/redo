@@ -56,6 +56,7 @@ interface DailyRevenueData {
   date: string;
   revenue: number;
   purchases?: number;
+  allOrders?: number;  // new field for all orders per day
 }
 
 interface ChatOrder {
@@ -275,6 +276,13 @@ export default function Index() {
         data: purchasesData,
         borderColor: "#4BC0C0",
         backgroundColor: "rgba(75, 192, 192, 0.2)",
+        tension: 0.4,
+      },
+      {
+        label: "Alle Bestellungen pro Tag",  // new dataset
+        data: dailyRevenue?.map((entry) => entry.allOrders || 0) || [],
+        borderColor: "#FFA500",
+        backgroundColor: "rgba(255, 165, 0, 0.2)",
         tension: 0.4,
       },
     ],
