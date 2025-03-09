@@ -12,7 +12,7 @@ import {
   Box,
 } from "@shopify/polaris";
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { useLoaderData, useSearchParams } from "@remix-run/react";
 import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
 import ReactMarkdown from 'react-markdown';
 
@@ -224,6 +224,10 @@ export default function TranscriptViewer() {
   };
   
 
+  // Get userID from URL parameters
+  const [searchParams] = useSearchParams();
+  const userIDParam = searchParams.get('userID');
+
   // Initiales Laden der Transkripte
   useEffect(() => {
     fetchTranscripts();
@@ -231,7 +235,25 @@ export default function TranscriptViewer() {
   
   useEffect(() => {
     console.log("Transcripts State:", transcripts); // Debugging
-  }, [transcripts]);
+    
+    // Automatically select transcript with matching sessionID if userID parameter exists
+    if (userIDParam && transcripts.length > 0) {
+      console.log("Searching for transcript with sessionID:", userIDParam);
+      
+      // Find transcript with matching sessionID
+      const matchingTranscript = transcripts.find(
+        (transcript) => transcript.sessionID === userIDParam
+      );
+      
+      if (matchingTranscript) {
+        console.log("Found matching transcript:", matchingTranscript._id);
+        // Automatically select this transcript
+        fetchTranscriptDetails(matchingTranscript._id);
+      } else {
+        console.log("No matching transcript found for sessionID:", userIDParam);
+      }
+    }
+  }, [userIDParam, transcripts]);
   
   // Styles für Nachrichten
   const messageStyle = {

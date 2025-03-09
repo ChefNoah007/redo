@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { useFetcher, useLoaderData } from "@remix-run/react";
+import { useFetcher, useLoaderData, Link } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -406,20 +406,42 @@ export default function Index() {
               <Text as="p">Keine Chat-Bestellungen im ausgewählten Zeitraum.</Text>
             ) : (
               <div>
-                {chatOrders.map((order) => {
-                  const orderDate = new Date(order.created_at);
-                  return (
-                    <div key={order.id} style={{ marginBottom: '10px', padding: '10px', borderBottom: '1px solid #e6e6e6' }}>
-                      <Text as="p">
-                        Bestellung #{order.order_number} - {orderDate.toLocaleDateString('de-DE')} um {orderDate.toLocaleTimeString('de-DE')}
-                      </Text>
-                      <Text as="p">Betrag: €{order.total_price}</Text>
-                      {order.userID && (
+              {chatOrders.map((order) => {
+                const orderDate = new Date(order.created_at);
+                return (
+                  <div key={order.id} style={{ marginBottom: '10px', padding: '10px', borderBottom: '1px solid #e6e6e6' }}>
+                    {order.userID ? (
+                      // Clickable order with border for orders with UserID
+                      <Link 
+                        to={`/app/additional?userID=${order.userID}`} 
+                        style={{ 
+                          textDecoration: 'none', 
+                          color: 'inherit',
+                          display: 'block',
+                          padding: '8px',
+                          border: '1px solid #36a2eb',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Text as="p">
+                          Bestellung #{order.order_number} - {orderDate.toLocaleDateString('de-DE')} um {orderDate.toLocaleTimeString('de-DE')}
+                        </Text>
+                        <Text as="p">Betrag: €{order.total_price}</Text>
                         <Text as="p">UserID: {order.userID}</Text>
-                      )}
-                    </div>
-                  );
-                })}
+                      </Link>
+                    ) : (
+                      // Non-clickable order without border
+                      <>
+                        <Text as="p">
+                          Bestellung #{order.order_number} - {orderDate.toLocaleDateString('de-DE')} um {orderDate.toLocaleTimeString('de-DE')}
+                        </Text>
+                        <Text as="p">Betrag: €{order.total_price}</Text>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
               </div>
             )}
           </Card>
