@@ -20,7 +20,13 @@ export default function SyncPage() {
   const [toastMessage, setToastMessage] = useState('');
   const [overwrite, setOverwrite] = useState(false);
   const [syncType, setSyncType] = useState('products');
-  const [syncResult, setSyncResult] = useState<{ success: boolean; urlCount?: number } | null>(null);
+  const [syncResult, setSyncResult] = useState<{ 
+    success: boolean; 
+    urlCount?: number;
+    totalUrls?: number;
+    failedCount?: number;
+    failedUrls?: string[];
+  } | null>(null);
 
   const handleSynchronize = async () => {
     setIsSynchronizing(true);
@@ -43,19 +49,39 @@ export default function SyncPage() {
       const data = await response.json();
 
       if (data.success) {
-        setSyncResult({
-          success: true,
-          urlCount: data.urlCount
-        });
-        setToastMessage(
-          syncType === 'products' 
-            ? 'Product synchronization successful!' 
-            : `URL synchronization successful! ${data.urlCount || 0} URLs synchronized.`
-        );
+        if (syncType === 'products') {
+          setSyncResult({
+            success: true,
+            urlCount: data.urlCount
+          });
+          setToastMessage('Product synchronization successful!');
+        } else {
+          // For URL synchronization, we have more detailed information
+          setSyncResult({
+            success: true,
+            urlCount: data.urlCount,
+            totalUrls: data.totalUrls,
+            failedCount: data.failedCount,
+            failedUrls: data.failedUrls
+          });
+          
+          if (data.failedCount && data.failedCount > 0) {
+            setToastMessage(`URL synchronization partially successful. ${data.urlCount} of ${data.totalUrls} URLs synchronized.`);
+          } else {
+            setToastMessage(`URL synchronization successful! ${data.urlCount} URLs synchronized.`);
+          }
+        }
       } else {
         const errorMessage = typeof data.error === 'object' ? JSON.stringify(data.error) : data.error;
+        setSyncResult({
+          success: false,
+          ...(data.urlCount && { urlCount: data.urlCount }),
+          ...(data.totalUrls && { totalUrls: data.totalUrls }),
+          ...(data.failedCount && { failedCount: data.failedCount }),
+          ...(data.failedUrls && { failedUrls: data.failedUrls })
+        });
         setToastMessage(`Synchronization failed: ${errorMessage}`);
-      }      
+      }
     } catch (error) {
       setToastMessage('An error occurred during synchronization.');
     }
@@ -108,11 +134,24 @@ export default function SyncPage() {
                 </Button>
               </div>
               
-              {syncResult && syncResult.success && syncType === 'urls' && (
+              {syncResult && syncType === 'urls' && (
                 <div style={{ marginTop: '16px' }}>
-                  <p>
-                    Successfully synchronized {syncResult.urlCount} URLs with Voiceflow.
-                  </p>
+                  {syncResult.success ? (
+                    <>
+                      <p>
+                        Successfully synchronized {syncResult.urlCount} of {syncResult.totalUrls} URLs with Voiceflow.
+                      </p>
+                      {syncResult.failedCount && syncResult.failedCount > 0 && (
+                        <p>
+                          Failed to synchronize {syncResult.failedCount} URLs.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p>
+                      Failed to synchronize URLs with Voiceflow.
+                    </p>
+                  )}
                 </div>
               )}
             </Card>

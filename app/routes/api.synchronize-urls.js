@@ -99,49 +99,71 @@ export const action = async ({ request }) => {
     });
     
     // Voiceflow URL with optional overwrite parameter
-    let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload/table";
+    let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload";
     if (overwrite) {
       voiceflowUrl += "?overwrite=true";
     }
     
-    const voiceflowData = {
-      data: {
-        schema: {
-          searchableFields: [
-            "PageURL",
-            "PageTitle",
-            "PageType"
-          ],
-          metadataFields: [
-            "PageURL",
-            "PageTitle",
-            "PageType",
-            "LastModified"
-          ],
-        },
-        name: "ShopifyPages",
-        items: normalizedItems,
-      },
-    };
+    // The document API requires one URL per call, so we need to make multiple calls
+    const uploadResults = [];
+    const failedUrls = [];
+    let successCount = 0;
     
-    const voiceflowResponse = await fetch(voiceflowUrl, {
-      method: "POST",
-      headers: {
-        Authorization: settings.vf_key,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(voiceflowData),
-    });
-    
-    if (voiceflowResponse.ok) {
-      return json({ 
-        success: true,
-        urlCount: normalizedItems.length
+    // Process URLs in batches to avoid overwhelming the API
+    const batchSize = 5; // Process 5 URLs at a time
+    for (let i = 0; i < filteredUrls.length; i += batchSize) {
+      const batch = filteredUrls.slice(i, i + batchSize);
+      
+      // Process each URL in the batch concurrently
+      const batchPromises = batch.map(async (url) => {
+        try {
+          const voiceflowData = {
+            data: {
+              type: "url",
+              url: url
+            }
+          };
+          
+          const response = await fetch(voiceflowUrl, {
+            method: "POST",
+            headers: {
+              Authorization: settings.vf_key,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(voiceflowData),
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            successCount++;
+            return { success: true, url, result };
+          } else {
+            const errorDetails = await response.json();
+            failedUrls.push(url);
+            return { success: false, url, error: errorDetails };
+          }
+        } catch (error) {
+          failedUrls.push(url);
+          return { success: false, url, error: error.message };
+        }
       });
-    } else {
-      const errorDetails = await voiceflowResponse.json();
-      return json({ success: false, error: errorDetails });
+      
+      const batchResults = await Promise.all(batchPromises);
+      uploadResults.push(...batchResults);
+      
+      // Add a small delay between batches to avoid rate limiting
+      if (i + batchSize < filteredUrls.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
+    
+    return json({
+      success: successCount > 0,
+      urlCount: successCount,
+      totalUrls: filteredUrls.length,
+      failedCount: failedUrls.length,
+      failedUrls: failedUrls.length > 0 ? failedUrls : undefined
+    });
   } catch (error) {
     console.error("URL synchronization error:", error);
     return json({ success: false, error: error.message });
