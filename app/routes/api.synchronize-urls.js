@@ -1,0 +1,149 @@
+import { json } from "@remix-run/node";
+import axios from "axios";
+import { parseStringPromise } from "xml2js";
+import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
+
+export const action = async ({ request }) => {
+  // Get Voiceflow settings from metafields
+  const settings = await getVoiceflowSettings(request);
+  
+  try {
+    const body = await request.json();
+    const overwrite = body.overwrite === true;
+
+    // Hardcoded shop domain - in a real app, this would be dynamic
+    const shopDomain = "coffee-principles.myshopify.com";
+    
+    // Fetch the sitemap
+    const sitemapUrl = `https://${shopDomain}/sitemap.xml`;
+    const sitemapResponse = await axios.get(sitemapUrl);
+    
+    if (!sitemapResponse.data) {
+      throw new Error("Failed to fetch sitemap");
+    }
+    
+    // Parse the XML sitemap
+    const parsedSitemap = await parseStringPromise(sitemapResponse.data);
+    
+    // Extract URLs from the sitemap
+    let allUrls = [];
+    
+    // Handle different sitemap formats
+    if (parsedSitemap.urlset && parsedSitemap.urlset.url) {
+      // Standard sitemap
+      allUrls = parsedSitemap.urlset.url.map(url => url.loc[0]);
+    } else if (parsedSitemap.sitemapindex && parsedSitemap.sitemapindex.sitemap) {
+      // Sitemap index - we need to fetch each individual sitemap
+      const sitemapUrls = parsedSitemap.sitemapindex.sitemap.map(sitemap => sitemap.loc[0]);
+      
+      // Fetch each sitemap (excluding product sitemaps)
+      for (const sitemapUrl of sitemapUrls) {
+        // Skip product sitemaps
+        if (sitemapUrl.includes('/products_')) {
+          continue;
+        }
+        
+        try {
+          const subSitemapResponse = await axios.get(sitemapUrl);
+          const parsedSubSitemap = await parseStringPromise(subSitemapResponse.data);
+          
+          if (parsedSubSitemap.urlset && parsedSubSitemap.urlset.url) {
+            const urls = parsedSubSitemap.urlset.url.map(url => url.loc[0]);
+            allUrls = [...allUrls, ...urls];
+          }
+        } catch (error) {
+          console.error(`Error fetching sub-sitemap ${sitemapUrl}:`, error);
+        }
+      }
+    }
+    
+    // Filter out product URLs and limit to 190 URLs
+    const filteredUrls = allUrls
+      .filter(url => !url.includes('/products/'))
+      .slice(0, 190);
+    
+    // Prepare data for Voiceflow
+    const normalizedItems = filteredUrls.map(url => {
+      // Extract page title from URL
+      const urlObj = new URL(url);
+      const pathSegments = urlObj.pathname.split('/').filter(segment => segment);
+      let pageTitle = pathSegments.length > 0 
+        ? pathSegments[pathSegments.length - 1].replace(/-/g, ' ') 
+        : 'Home';
+      
+      // Capitalize first letter of each word
+      pageTitle = pageTitle
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      
+      // Determine page type
+      let pageType = "Page";
+      if (url.includes('/collections/')) {
+        pageType = "Collection";
+      } else if (url.includes('/pages/')) {
+        pageType = "Information";
+      } else if (url.includes('/blogs/')) {
+        pageType = "Blog";
+      } else if (url === `https://${shopDomain}/` || url === `https://${shopDomain}`) {
+        pageType = "Homepage";
+        pageTitle = "Homepage";
+      }
+      
+      return {
+        PageURL: url,
+        PageTitle: pageTitle,
+        PageType: pageType,
+        LastModified: new Date().toISOString().split('T')[0] // Current date as YYYY-MM-DD
+      };
+    });
+    
+    // Voiceflow URL with optional overwrite parameter
+    let voiceflowUrl = "https://api.voiceflow.com/v1/knowledge-base/docs/upload/table";
+    if (overwrite) {
+      voiceflowUrl += "?overwrite=true";
+    }
+    
+    const voiceflowData = {
+      data: {
+        schema: {
+          searchableFields: [
+            "PageURL",
+            "PageTitle",
+            "PageType"
+          ],
+          metadataFields: [
+            "PageURL",
+            "PageTitle",
+            "PageType",
+            "LastModified"
+          ],
+        },
+        name: "ShopifyPages",
+        items: normalizedItems,
+      },
+    };
+    
+    const voiceflowResponse = await fetch(voiceflowUrl, {
+      method: "POST",
+      headers: {
+        Authorization: settings.vf_key,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(voiceflowData),
+    });
+    
+    if (voiceflowResponse.ok) {
+      return json({ 
+        success: true,
+        urlCount: normalizedItems.length
+      });
+    } else {
+      const errorDetails = await voiceflowResponse.json();
+      return json({ success: false, error: errorDetails });
+    }
+  } catch (error) {
+    console.error("URL synchronization error:", error);
+    return json({ success: false, error: error.message });
+  }
+};

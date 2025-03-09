@@ -26,6 +26,8 @@
   "dependencies": {
     "@prisma/client": "^5.11.0",
     "@remix-run/dev": "^2.7.1",
+    "axios": "^1.6.7",
+    "xml2js": "^0.6.2",
     "@remix-run/fs-routes": "^2.15.0",
     "@remix-run/node": "^2.7.1",
     "@remix-run/react": "^2.7.1",
