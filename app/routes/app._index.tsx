@@ -298,22 +298,22 @@ export default function Index() {
       {
         label: "Transkripte pro Tag",
         data: transcriptsData,
-        borderColor: "#36a2eb",
-        backgroundColor: "rgba(54, 162, 235, 0.2)",
+        borderColor: "#F0F1F0",
+        backgroundColor: "rgba(240, 241, 240, 0.2)",
         tension: 0.4,
       },
       {
         label: "Käufe pro Tag",
         data: purchasesData,
-        borderColor: "#4BC0C0",
-        backgroundColor: "rgba(75, 192, 192, 0.2)",
+        borderColor: "#F1C232",
+        backgroundColor: "rgba(241, 194, 50, 0.2)",
         tension: 0.4,
       },
       {
         label: "Alle Bestellungen pro Tag",  // new dataset
         data: dailyRevenue?.map((entry) => entry.allOrders || 0) || [],
-        borderColor: "#FFA500",
-        backgroundColor: "rgba(255, 165, 0, 0.2)",
+        borderColor: "#109959",
+        backgroundColor: "rgba(16, 153, 89, 0.2)",
         tension: 0.4,
       },
     ],
@@ -325,8 +325,8 @@ export default function Index() {
       {
         label: "Daily Revenue (€)",
         data: revenueData,
-        backgroundColor: "rgba(255, 99, 132, 0.2)",
-        borderColor: "#FF6384",
+        backgroundColor: "rgba(75, 68, 54, 0.2)",
+        borderColor: "#4B4436",
         borderWidth: 1,
       },
     ],
@@ -415,11 +415,11 @@ export default function Index() {
                         label: "Top Intents",
                         data: topIntents?.map((intent) => intent.count) || [],
                         backgroundColor: [
-                          "#FF6384",
-                          "#36A2EB",
-                          "#FFCE56",
-                          "#4BC0C0",
-                          "#9966FF",
+                          "#F0F1F0",
+                          "#F1C232",
+                          "#109959",
+                          "#4B4436",
+                          "rgba(16, 153, 89, 0.7)", // Variation of #109959 for the fifth color if needed
                         ],
                         borderWidth: 1,
                       },
@@ -464,7 +464,7 @@ export default function Index() {
                           color: 'inherit',
                           display: 'block',
                           padding: '8px',
-                          border: '1px solid #36a2eb',
+                          border: '1px solid #109959',
                           borderRadius: '4px',
                           cursor: 'pointer'
                         }}
