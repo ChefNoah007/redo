@@ -182,6 +182,38 @@ export default function Index() {
     }
   };
 
+  // Fetch intent data from our new API endpoint
+  const fetchIntentData = async (selectedTimeRange: string): Promise<IntentData[]> => {
+    try {
+      console.log("Dashboard - Fetching intent data with time range:", selectedTimeRange);
+      const response = await fetch("/api/intents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timeRange: selectedTimeRange }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Dashboard - Intent API request failed: ${response.status} ${response.statusText}`, errorText);
+        return [];
+      }
+      
+      const data = await response.json();
+      console.log("Dashboard - Intent API response:", data);
+      
+      if (data && Array.isArray(data.intents)) {
+        console.log(`Dashboard - Received ${data.intents.length} intents`);
+        return data.intents;
+      } else {
+        console.warn("Dashboard - No intents found in API response");
+        return [];
+      }
+    } catch (error) {
+      console.error("Dashboard - Error fetching intent data:", error);
+      return [];
+    }
+  };
+
   // 3) Gesamtdaten (Analytics, Transcripts, Revenue) laden
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
@@ -191,6 +223,10 @@ export default function Index() {
 
       const dailyRevenueData = await fetchDailyRevenue(selectedTimeRange);
       setDailyRevenue(dailyRevenueData);
+
+      // Fetch intent data
+      const intentData = await fetchIntentData(selectedTimeRange);
+      setTopIntents(intentData);
 
       // Analytics-Daten (hier werden die Transkripte auch für weitere Berechnungen genutzt)
       try {
@@ -210,7 +246,6 @@ export default function Index() {
           console.log("Dashboard - Analytics API response:", data);
           const transcriptCount = Array.isArray(data.transcripts) ? data.transcripts.length : 0;
           setSessions(transcriptCount);
-          setTopIntents([]);
           let uniqueUserCount = 0;
           if (Array.isArray(data.transcripts)) {
             const uniqueUsers = new Set();
@@ -227,7 +262,6 @@ export default function Index() {
       } catch (apiError) {
         console.error("Dashboard - Error fetching analytics data:", apiError);
         setSessions(0);
-        setTopIntents([]);
         setUniqueUsers(0);
       }
     } catch (error) {
