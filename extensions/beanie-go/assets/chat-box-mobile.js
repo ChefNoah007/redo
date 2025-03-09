@@ -1,4 +1,13 @@
 document.addEventListener('DOMContentLoaded', function () {
+  // Flag to control auto-scrolling - initially disabled
+  let autoScrollEnabled = false;
+
+  // Enable auto-scrolling after 4 seconds
+  setTimeout(() => {
+    autoScrollEnabled = true;
+    console.log('Auto-scrolling enabled after 4-second delay');
+  }, 4000);
+
   // Prüfen, ob eine userID bereits im localStorage vorhanden ist
   let userID = localStorage.getItem('VF_UserID');
   if (!userID) {
@@ -147,6 +156,35 @@ document.addEventListener('DOMContentLoaded', function () {
       messageDiv.innerHTML = message;
       chatBox.appendChild(messageDiv);
       chatBox.scrollTop = chatBox.scrollHeight;
+      
+      // Only scroll if auto-scrolling is enabled (after initial 4-second delay)
+      if (autoScrollEnabled) {
+        // Get the latest message element
+        const latestMessage = messageDiv;
+        
+        // Find the shop header element
+        const shopHeader = document.querySelector('#shopify-section-header, #header, .site-header, header');
+        let headerHeight = 0;
+
+        // If a header is found, get its height
+        if (shopHeader) {
+          headerHeight = shopHeader.offsetHeight;
+        } else {
+          // Fallback to a common header height if no header element is found
+          headerHeight = 100;
+        }
+
+        // Calculate the target scroll position
+        const rect = latestMessage.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const targetY = rect.top + scrollTop - headerHeight - 50; // 50px gap between header and message
+
+        // Scroll to the target position
+        window.scrollTo({
+          top: targetY,
+          behavior: 'smooth'
+        });
+      }
   }
 
   function addAgentImage(imageUrl) {
@@ -163,6 +201,35 @@ document.addEventListener('DOMContentLoaded', function () {
       imageDiv.appendChild(imgElement);
       chatBox.appendChild(imageDiv);
       chatBox.scrollTop = chatBox.scrollHeight;
+      
+      // Only scroll if auto-scrolling is enabled (after initial 4-second delay)
+      if (autoScrollEnabled) {
+        // Get the latest message element
+        const latestMessage = imageDiv;
+        
+        // Find the shop header element
+        const shopHeader = document.querySelector('#shopify-section-header, #header, .site-header, header');
+        let headerHeight = 0;
+
+        // If a header is found, get its height
+        if (shopHeader) {
+          headerHeight = shopHeader.offsetHeight;
+        } else {
+          // Fallback to a common header height if no header element is found
+          headerHeight = 100;
+        }
+
+        // Calculate the target scroll position
+        const rect = latestMessage.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const targetY = rect.top + scrollTop - headerHeight - 50; // 50px gap between header and message
+
+        // Scroll to the target position
+        window.scrollTo({
+          top: targetY,
+          behavior: 'smooth'
+        });
+      }
   }
   
 
@@ -190,6 +257,35 @@ document.addEventListener('DOMContentLoaded', function () {
           buttonDiv.appendChild(buttonElement);
       }
       chatBox.scrollTop = chatBox.scrollHeight;
+      
+      // Only scroll if auto-scrolling is enabled (after initial 4-second delay)
+      if (autoScrollEnabled && buttonDiv.lastElementChild) {
+        // Get the latest button element
+        const latestButton = buttonDiv.lastElementChild;
+        
+        // Find the shop header element
+        const shopHeader = document.querySelector('#shopify-section-header, #header, .site-header, header');
+        let headerHeight = 0;
+
+        // If a header is found, get its height
+        if (shopHeader) {
+          headerHeight = shopHeader.offsetHeight;
+        } else {
+          // Fallback to a common header height if no header element is found
+          headerHeight = 100;
+        }
+
+        // Calculate the target scroll position
+        const rect = latestButton.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const targetY = rect.top + scrollTop - headerHeight - 50; // 50px gap between header and message
+
+        // Scroll to the target position
+        window.scrollTo({
+          top: targetY,
+          behavior: 'smooth'
+        });
+      }
   }
 
   function showAddToCart() {

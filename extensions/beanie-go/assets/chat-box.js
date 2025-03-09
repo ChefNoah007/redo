@@ -76,6 +76,15 @@ document.head.appendChild(style);
 
 // 3) Haupt-Code:
 document.addEventListener('DOMContentLoaded', function () {
+// Flag to control auto-scrolling - initially disabled
+let autoScrollEnabled = false;
+
+// Enable auto-scrolling after 4 seconds
+setTimeout(() => {
+  autoScrollEnabled = true;
+  console.log('Auto-scrolling enabled after 4-second delay');
+}, 4000);
+
 // (A) UserID in localStorage
 let userID = localStorage.getItem('VF_UserID');
 if (!userID) {
@@ -290,7 +299,43 @@ function addAgentMessage(message) {
   messageDiv.className = 'vf-message vf-message-agent';
   messageDiv.innerHTML = message;
   chatBox.appendChild(messageDiv);
+  
+  // Vorhandenes Scroll-Verhalten (scrollt bis zum Ende des Chat-Inhalts)
   chatBox.scrollTop = chatBox.scrollHeight;
+  
+  // ZUSÄTZLICH: Scroll, sodass der obere Rand der Agentennachricht oben in der Chat-Box liegt.
+  // Wenn der "chat-all-button-container" vorhanden ist, warten wir eine feste Zeit (z. B. 500ms),
+  // bevor zum Agenten-Element gescrollt wird.
+  if (autoScrollEnabled) {
+    setTimeout(() => {
+      if (document.getElementById("chat-all-button-container")) {
+        // Warten, bis der Button-Container sichtbar ist, dann scrollen
+        setTimeout(() => {
+          chatBox.scrollTop = messageDiv.offsetTop;
+        }, 500); // Verzögerung anpassen, je nach Bedarf
+      } else {
+        chatBox.scrollTop = messageDiv.offsetTop;
+      }
+    }, 0);
+  }
+  
+  // Weiterer Code (z. B. Header-Scroll)
+  if (autoScrollEnabled) {
+    // Führe den window.scrollTo-Block nur aus, wenn der Button-Container NICHT vorhanden oder nicht sichtbar ist.
+    const btnContainer = document.getElementById("chat-all-button-container");
+    if (!btnContainer || window.getComputedStyle(btnContainer).display === "none") {
+      const shopHeader = document.querySelector('#shopify-section-header, #header, .site-header, header');
+      let headerHeight = shopHeader ? shopHeader.offsetHeight : 100;
+      const chatContainer = document.getElementById('chat-container');
+      const rect = chatContainer.getBoundingClientRect();
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const targetY = rect.top + scrollTop - headerHeight - 50;
+      window.scrollTo({
+        top: targetY,
+        behavior: 'smooth'
+      });
+    }
+  }
 }
 
 function addAgentImage(imageUrl) {
@@ -304,7 +349,29 @@ function addAgentImage(imageUrl) {
   imgElement.style.margin = "10px 0";
   imageDiv.appendChild(imgElement);
   chatBox.appendChild(imageDiv);
+  
+  // Vorhandenes Scroll-Verhalten
   chatBox.scrollTop = chatBox.scrollHeight;
+
+  // ZUSÄTZLICH: Scroll, sodass der obere Rand des Bildes oben in der Chat-Box liegt
+  if (autoScrollEnabled) {
+    setTimeout(() => {
+      chatBox.scrollTop = imageDiv.offsetTop;
+    }, 0);
+  }
+  
+  if (autoScrollEnabled) {
+    const shopHeader = document.querySelector('#shopify-section-header, #header, .site-header, header');
+    let headerHeight = shopHeader ? shopHeader.offsetHeight : 100;
+    const chatContainer = document.getElementById('chat-container');
+    const rect = chatContainer.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const targetY = rect.top + scrollTop - headerHeight - 50;
+    window.scrollTo({
+      top: targetY,
+      behavior: 'smooth'
+    });
+  }
 }
 
 // WICHTIG: Hier wird jetzt setUsedChatAttribute() auch beim Button-Klick auf "choice"-Buttons aufgerufen
@@ -333,7 +400,23 @@ function addAgentNormalButton(buttons) {
     });
     buttonDiv.appendChild(buttonElement);
   }
+  
+  // Standard-Scroll-Verhalten beibehalten
   chatBox.scrollTop = chatBox.scrollHeight;
+  
+  // Zusätzlicher Scroll-Befehl nur ausführen, wenn der Button-Container NICHT die ID "chat-all-button-container" hat
+  if (autoScrollEnabled && buttonDiv.id !== 'chat-all-button-container') {
+    const shopHeader = document.querySelector('#shopify-section-header, #header, .site-header, header');
+    let headerHeight = shopHeader ? shopHeader.offsetHeight : 100;
+    const chatContainer = document.getElementById('chat-container');
+    const rect = chatContainer.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const targetY = rect.top + scrollTop - headerHeight - 80;
+    window.scrollTo({
+      top: targetY,
+      behavior: 'smooth'
+    });
+  }
 }
 
 function showAddToCart() {

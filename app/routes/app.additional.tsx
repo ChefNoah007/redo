@@ -186,7 +186,7 @@ export default function TranscriptViewer() {
             case "request":
               return {
                 sender: "user",
-                text: item.payload?.payload?.label || null,
+                text: item.payload?.payload?.label || item.payload?.payload?.query || null,
               };
             case "debug":
               // Falls es sich um einen Flow-Start handelt:
