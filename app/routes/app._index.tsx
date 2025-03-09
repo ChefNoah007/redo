@@ -299,21 +299,21 @@ export default function Index() {
         label: "Transkripte pro Tag",
         data: transcriptsData,
         borderColor: "#F0F1F0",
-        backgroundColor: "rgba(240, 241, 240, 0.2)",
+        backgroundColor: "rgba(200, 200, 200, 0.5)", // Darker version of F0F1F0 with more opacity for visibility
         tension: 0.4,
       },
       {
         label: "Käufe pro Tag",
         data: purchasesData,
         borderColor: "#F1C232",
-        backgroundColor: "rgba(241, 194, 50, 0.2)",
+        backgroundColor: "rgba(241, 194, 50, 0.4)", // Increased opacity for better visibility
         tension: 0.4,
       },
       {
         label: "Alle Bestellungen pro Tag",  // new dataset
         data: dailyRevenue?.map((entry) => entry.allOrders || 0) || [],
         borderColor: "#109959",
-        backgroundColor: "rgba(16, 153, 89, 0.2)",
+        backgroundColor: "rgba(16, 153, 89, 0.4)", // Increased opacity for better visibility
         tension: 0.4,
       },
     ],
@@ -325,7 +325,7 @@ export default function Index() {
       {
         label: "Daily Revenue (€)",
         data: revenueData,
-        backgroundColor: "rgba(75, 68, 54, 0.2)",
+        backgroundColor: "rgba(75, 68, 54, 0.4)", // Increased opacity for better visibility
         borderColor: "#4B4436",
         borderWidth: 1,
       },
@@ -415,7 +415,7 @@ export default function Index() {
                         label: "Top Intents",
                         data: topIntents?.map((intent) => intent.count) || [],
                         backgroundColor: [
-                          "#F0F1F0",
+                          "#CCCCCC", // Darker version of F0F1F0 for better visibility against white background
                           "#F1C232",
                           "#109959",
                           "#4B4436",
