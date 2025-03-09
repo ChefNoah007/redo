@@ -1,5 +1,5 @@
 {
-  "name": "redo",
+  "name": "ai-agent",
   "private": true,
   "scripts": {
     "build": "remix vite:build",
