@@ -25,7 +25,7 @@ export default function App() {
           Home
         </Link>
         <Link to="/app/additional">Transcripts</Link>
-        <Link to="/app/additional copy">Sync</Link>
+        <Link to="/app/sync">Sync</Link>
         <Link to="/app/additional copy 2">Settings</Link>
         <Link to="/app/voiceflow-settings">Voiceflow API</Link>
       </NavMenu>
