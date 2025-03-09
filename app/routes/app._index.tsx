@@ -186,7 +186,7 @@ export default function Index() {
   const fetchIntentData = async (selectedTimeRange: string): Promise<IntentData[]> => {
     try {
       console.log("Dashboard - Fetching intent data with time range:", selectedTimeRange);
-      const response = await fetch("/api/intents", {
+      const response = await fetch("/api.intents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ timeRange: selectedTimeRange }),
