@@ -4,6 +4,7 @@ import { json } from "@remix-run/node";
 import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "../db.server.cjs";
+import { getCachedData, setCachedData } from "../utils/redis-client.server";
 
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY,
@@ -26,23 +27,39 @@ export async function loader({ request }) {
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     console.log("Calculated start date:", startDate.toISOString());
 
+    // Create a cache key based on the shop domain and time range
     const shopDomain = "coffee-principles.myshopify.com";
-    const offlineSessionId = shopify.session.getOfflineId(shopDomain);
-    const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
-    if (!session) {
-      console.log(`No offline session found for shop ${shopDomain}`);
-      return json({ success: false, error: `No offline session found for shop ${shopDomain}` }, { status: 401 });
-    }
+    const cacheKey = `orders:${shopDomain}:${timeRangeParam}`;
+    
+    // Try to get data from cache first
+    let allOrders = await getCachedData(cacheKey);
+    
+    if (!allOrders) {
+      console.log("Daily data - Cache miss, fetching from Shopify API");
+      
+      const offlineSessionId = shopify.session.getOfflineId(shopDomain);
+      const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
+      if (!session) {
+        console.log(`No offline session found for shop ${shopDomain}`);
+        return json({ success: false, error: `No offline session found for shop ${shopDomain}` }, { status: 401 });
+      }
 
-    const client = new shopify.clients.Rest({ session });
-    const getResponse = await client.get({
-      path: "orders",
-      query: {
-        status: "any",
-      },
-    });
-    const allOrders = getResponse.body?.orders || [];
-    console.log("Fetched orders count:", allOrders.length);
+      const client = new shopify.clients.Rest({ session });
+      const getResponse = await client.get({
+        path: "orders",
+        query: {
+          status: "any",
+        },
+      });
+      allOrders = getResponse.body?.orders || [];
+      console.log("Fetched orders count:", allOrders.length);
+      
+      // Cache the orders for 1 hour (3600 seconds)
+      await setCachedData(cacheKey, allOrders, 3600);
+      console.log("Daily data - Cached Shopify API response");
+    } else {
+      console.log("Daily data - Cache hit, using cached orders data");
+    }
 
     // Filtere Bestellungen: Nur Orders mit note_attributes usedChat = "true" und erstellt nach startDate
     const chatOrders = allOrders.filter((order) => {

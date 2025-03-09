@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useFetcher, useLoaderData, Link } from "@remix-run/react";
@@ -10,31 +10,13 @@ import {
   Select,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
-import {
-  BarElement,
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { Line, Bar } from "react-chartjs-2";
 import { authenticate } from "../shopify.server";
 import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
+import { SkeletonChart, SkeletonTable } from "../components/SkeletonComponents";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+// Lazy load chart components
+const LineChartComponent = lazy(() => import("./LineChartComponent"));
+const BarChartComponent = lazy(() => import("./BarChartComponent"));
 
 interface LoaderData {
   vf_key: string;
@@ -214,56 +196,71 @@ export default function Index() {
     }
   };
 
-  // 3) Gesamtdaten (Analytics, Transcripts, Revenue) laden
+  // Fetch analytics data
+  const fetchAnalyticsData = async (selectedTimeRange: string) => {
+    try {
+      const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
+      console.log("Dashboard - Fetching analytics data with time range:", { startTime, endTime });
+      const response = await fetch("/proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timeRange: selectedTimeRange }),
+      });
+        
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Dashboard - API request failed: ${response.status} ${response.statusText}`, errorText);
+        return { transcriptCount: 0, uniqueUserCount: 0 };
+      }
+      
+      const data = await response.json();
+      console.log("Dashboard - Analytics API response:", data);
+      const transcriptCount = Array.isArray(data.transcripts) ? data.transcripts.length : 0;
+      
+      let uniqueUserCount = 0;
+      if (Array.isArray(data.transcripts)) {
+        const uniqueUsers = new Set();
+        data.transcripts.forEach((transcript: Transcript) => {
+          if (transcript.sessionID) {
+            uniqueUsers.add(transcript.sessionID);
+          }
+        });
+        uniqueUserCount = uniqueUsers.size;
+      }
+      
+      console.log(`Dashboard - Processed analytics: ${transcriptCount} transcripts, ${uniqueUserCount} unique users`);
+      return { transcriptCount, uniqueUserCount };
+    } catch (error) {
+      console.error("Dashboard - Error fetching analytics data:", error);
+      return { transcriptCount: 0, uniqueUserCount: 0 };
+    }
+  };
+
+  // 3) Gesamtdaten (Analytics, Transcripts, Revenue) laden - Optimiert für parallele Ausführung
   const fetchDashboardData = async (selectedTimeRange: string) => {
     setIsLoading(true);
     try {
-      const dailyTranscriptsData = await fetchDailyTranscripts(selectedTimeRange);
+      console.log("Dashboard - Fetching all data in parallel");
+      
+      // Alle API-Aufrufe parallel ausführen
+      const [
+        dailyTranscriptsData,
+        dailyRevenueData,
+        intentData,
+        analyticsData
+      ] = await Promise.all([
+        fetchDailyTranscripts(selectedTimeRange),
+        fetchDailyRevenue(selectedTimeRange),
+        fetchIntentData(selectedTimeRange),
+        fetchAnalyticsData(selectedTimeRange)
+      ]);
+      
+      // Ergebnisse setzen
       setDailyInteractions(dailyTranscriptsData);
-
-      const dailyRevenueData = await fetchDailyRevenue(selectedTimeRange);
       setDailyRevenue(dailyRevenueData);
-
-      // Fetch intent data
-      const intentData = await fetchIntentData(selectedTimeRange);
       setTopIntents(intentData);
-
-      // Analytics-Daten (hier werden die Transkripte auch für weitere Berechnungen genutzt)
-      try {
-        const { startTime, endTime } = calculateTimeRange(selectedTimeRange);
-        console.log("Dashboard - Fetching analytics data with time range:", { startTime, endTime });
-        const response = await fetch("/proxy", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ timeRange: selectedTimeRange }),
-        });
-          
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Dashboard - API request failed: ${response.status} ${response.statusText}`, errorText);
-        } else {
-          const data = await response.json();
-          console.log("Dashboard - Analytics API response:", data);
-          const transcriptCount = Array.isArray(data.transcripts) ? data.transcripts.length : 0;
-          setSessions(transcriptCount);
-          let uniqueUserCount = 0;
-          if (Array.isArray(data.transcripts)) {
-            const uniqueUsers = new Set();
-            data.transcripts.forEach((transcript: Transcript) => {
-              if (transcript.sessionID) {
-                uniqueUsers.add(transcript.sessionID);
-              }
-            });
-            uniqueUserCount = uniqueUsers.size;
-          }
-          setUniqueUsers(uniqueUserCount);
-          console.log(`Dashboard - Processed analytics: ${transcriptCount} transcripts, ${uniqueUserCount} unique users`);
-        }
-      } catch (apiError) {
-        console.error("Dashboard - Error fetching analytics data:", apiError);
-        setSessions(0);
-        setUniqueUsers(0);
-      }
+      setSessions(analyticsData.transcriptCount);
+      setUniqueUsers(analyticsData.uniqueUserCount);
     } catch (error) {
       console.error("Dashboard - Error fetching dashboard data:", error);
       setDailyInteractions([]);
@@ -377,9 +374,11 @@ export default function Index() {
               Daily Transcripts and Revenue
             </Text>
             {isLoading ? (
-              <Text as="p">Loading...</Text>
+              <SkeletonChart />
             ) : (
-              <Line data={lineChartData} options={lineChartOptions} />
+              <Suspense fallback={<SkeletonChart />}>
+                <LineChartComponent data={lineChartData} options={lineChartOptions} />
+              </Suspense>
             )}
           </Card>
         </Layout.Section>
@@ -389,7 +388,13 @@ export default function Index() {
             <Text as="h3" variant="headingMd">
               Daily Revenue
             </Text>
-            <Bar data={revenueChartData} options={revenueChartOptions} />
+            {isLoading ? (
+              <SkeletonChart />
+            ) : (
+              <Suspense fallback={<SkeletonChart />}>
+                <BarChartComponent data={revenueChartData} options={revenueChartOptions} />
+              </Suspense>
+            )}
           </Card>
         </Layout.Section>
 
@@ -398,34 +403,40 @@ export default function Index() {
             <Text as="h3" variant="headingMd">
               Top Intents
             </Text>
-            <Bar
-              data={{
-                labels: topIntents?.map((intent) => intent.name) || [],
-                datasets: [
-                  {
-                    label: "Top Intents",
-                    data: topIntents?.map((intent) => intent.count) || [],
-                    backgroundColor: [
-                      "#FF6384",
-                      "#36A2EB",
-                      "#FFCE56",
-                      "#4BC0C0",
-                      "#9966FF",
+            {isLoading ? (
+              <SkeletonChart />
+            ) : (
+              <Suspense fallback={<SkeletonChart />}>
+                <BarChartComponent
+                  data={{
+                    labels: topIntents?.map((intent) => intent.name) || [],
+                    datasets: [
+                      {
+                        label: "Top Intents",
+                        data: topIntents?.map((intent) => intent.count) || [],
+                        backgroundColor: [
+                          "#FF6384",
+                          "#36A2EB",
+                          "#FFCE56",
+                          "#4BC0C0",
+                          "#9966FF",
+                        ],
+                        borderWidth: 1,
+                      },
                     ],
-                    borderWidth: 1,
-                  },
-                ],
-              }}
-              options={{
-                responsive: true,
-                indexAxis: "y",
-                plugins: {
-                  legend: { position: "top" },
-                  title: { display: true, text: "Top Intents" },
-                },
-                scales: { x: { beginAtZero: true } },
-              }}
-            />
+                  }}
+                  options={{
+                    responsive: true,
+                    indexAxis: "y",
+                    plugins: {
+                      legend: { position: "top" },
+                      title: { display: true, text: "Top Intents" },
+                    },
+                    scales: { x: { beginAtZero: true } },
+                  }}
+                />
+              </Suspense>
+            )}
           </Card>
         </Layout.Section>
 
@@ -435,7 +446,7 @@ export default function Index() {
               Chat Orders with Timestamps
             </Text>
             {isLoading ? (
-              <Text as="p">Loading...</Text>
+              <SkeletonTable />
             ) : chatOrders.length === 0 ? (
               <Text as="p">Keine Chat-Bestellungen im ausgewählten Zeitraum.</Text>
             ) : (

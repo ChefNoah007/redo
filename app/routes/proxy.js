@@ -1,5 +1,6 @@
 import { json } from "@remix-run/node";
 import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
+import { getCachedData, setCachedData } from "../utils/redis-client.server";
 
 export const action = async ({ request }) => {
   try {
@@ -35,26 +36,42 @@ export const action = async ({ request }) => {
     console.log("Proxy action - Received timeRange:", timeRange);
 
     try {
-      const response = await fetch(VOICEFLOW_API_TRANSCRIPTS_URL, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          Authorization: API_KEY,
-        },
-      });
+      // Create a cache key based on the project ID and time range
+      const cacheKey = `transcripts:${PROJECT_ID}:${timeRange || 'all'}`;
+      
+      // Try to get data from cache first
+      let transcripts = await getCachedData(cacheKey);
+      
+      // If not in cache, fetch from API
+      if (!transcripts) {
+        console.log("Proxy action - Cache miss, fetching from API");
+        const response = await fetch(VOICEFLOW_API_TRANSCRIPTS_URL, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            Authorization: API_KEY,
+          },
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Proxy action - API request failed: ${response.status} ${response.statusText}`, errorText);
-        return json({ error: `Failed to fetch transcripts: ${response.statusText}` }, { status: response.status });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Proxy action - API request failed: ${response.status} ${response.statusText}`, errorText);
+          return json({ error: `Failed to fetch transcripts: ${response.statusText}` }, { status: response.status });
+        }
+
+        const data = await response.json();
+        console.log("Proxy action - API response received");
+
+        // Hier: Falls data direkt ein Array ist, verwenden wir es.
+        transcripts = Array.isArray(data) ? data : [];
+        console.log(`Proxy action - Fetched ${transcripts.length} transcripts from API`);
+        
+        // Cache the API response for 1 hour (3600 seconds)
+        await setCachedData(cacheKey, transcripts, 3600);
+        console.log("Proxy action - Cached API response");
+      } else {
+        console.log("Proxy action - Cache hit, using cached data");
       }
-
-      const data = await response.json();
-      console.log("Proxy action - API response received");
-
-      // Hier: Falls data direkt ein Array ist, verwenden wir es.
-      let transcripts = Array.isArray(data) ? data : [];
-      console.log(`Proxy action - Fetched ${transcripts.length} transcripts from API`);
 
       if (timeRange) {
         const days = parseInt(timeRange.replace("d", ""), 10);

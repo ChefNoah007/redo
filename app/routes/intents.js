@@ -1,5 +1,6 @@
 import { json } from "@remix-run/node";
 import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
+import { getCachedData, setCachedData } from "../utils/redis-client.server";
 
 export const action = async ({ request }) => {
   try {
@@ -59,36 +60,52 @@ export const action = async ({ request }) => {
     };
 
     try {
-      const response = await fetch(VOICEFLOW_ANALYTICS_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": API_KEY
-        },
-        body: JSON.stringify(queryPayload)
-      });
+      // Create a cache key based on the project ID, time range, and query parameters
+      const cacheKey = `intents:${PROJECT_ID}:${timeRange}:${startTime}:${endTime}`;
+      
+      // Try to get data from cache first
+      let intents = await getCachedData(`${cacheKey}`);
+      
+      if (!intents) {
+        console.log("Intents API - Cache miss, fetching from API");
+        
+        const response = await fetch(VOICEFLOW_ANALYTICS_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": API_KEY
+          },
+          body: JSON.stringify(queryPayload)
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Intents API - API request failed: ${response.status} ${response.statusText}`, errorText);
-        return json({ error: `Failed to fetch intents: ${response.statusText}` }, { status: response.status });
-      }
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Intents API - API request failed: ${response.status} ${response.statusText}`, errorText);
+          return json({ error: `Failed to fetch intents: ${response.statusText}` }, { status: response.status });
+        }
 
-      const data = await response.json();
-      console.log("Intents API - API response received:", data);
+        const data = await response.json();
+        console.log("Intents API - API response received:", data);
 
-      // Extract intents from the response
-      let intents = [];
-      if (data && data.result && Array.isArray(data.result) && data.result.length > 0) {
-        const intentResult = data.result[0];
-        if (intentResult && Array.isArray(intentResult.intents)) {
-          intents = intentResult.intents;
-          console.log(`Intents API - Extracted ${intents.length} intents from API response`);
+        // Extract intents from the response
+        intents = [];
+        if (data && data.result && Array.isArray(data.result) && data.result.length > 0) {
+          const intentResult = data.result[0];
+          if (intentResult && Array.isArray(intentResult.intents)) {
+            intents = intentResult.intents;
+            console.log(`Intents API - Extracted ${intents.length} intents from API response`);
+            
+            // Cache the intents for 1 hour (3600 seconds)
+            await setCachedData(cacheKey, intents, 3600);
+            console.log("Intents API - Cached API response");
+          } else {
+            console.warn("Intents API - No intents found in API response");
+          }
         } else {
-          console.warn("Intents API - No intents found in API response");
+          console.warn("Intents API - Unexpected API response format");
         }
       } else {
-        console.warn("Intents API - Unexpected API response format");
+        console.log("Intents API - Cache hit, using cached data");
       }
 
       return json({ intents });
