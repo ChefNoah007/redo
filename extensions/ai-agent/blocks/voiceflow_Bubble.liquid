@@ -3,7 +3,10 @@
   <!-- 1) Container für Chat -->
   <div id="voiceflow-chat" style="display: block;"></div>
 
-  <!-- 2) Voiceflow-Skript (lädt immer) -->
+  <!-- 2) API URL Script -->
+  <script src="{{ 'api-url.js' | asset_url }}"></script>
+
+  <!-- 3) Voiceflow-Skript (lädt immer) -->
   <script>
   (function() {
     // Diese Variable steuert, ob wir nach dem Laden auto-open ausführen
@@ -15,8 +18,8 @@
 
     // Falls eingeloggt => Judge.me Calls
     if (isLoggedIn) {
-      var shopDomain = "coffee-principles.myshopify.com"; 
-      var apiToken   = "vm0pqzEXK8jIMJCKbmuCec69tsU";
+      var shopDomain = "{{ shop.domain }}"; 
+      var apiToken   = "{{ shop.metafields.judge_me.api_token | default: 'vm0pqzEXK8jIMJCKbmuCec69tsU' }}";
 
       // 1) reviewer.id ermitteln
       fetch(`https://judge.me/api/v1/reviewers/-1?email=${encodeURIComponent(email)}&shop_domain=${shopDomain}&api_token=${apiToken}`)
@@ -53,7 +56,7 @@
       vfScript.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs";
       vfScript.onload = function() {
         window.voiceflow.chat.load({
-          verify: { projectID: '6703af9afcd0ea507e9c5369' },  // Dein Projekt
+          verify: { projectID: '{{ shop.metafields.voiceflow_settings.project_id | default: "6703af9afcd0ea507e9c5369" }}' },  // Dein Projekt
           url: 'https://general-runtime.voiceflow.com',
           versionID: 'production',
           launch: {
@@ -141,7 +144,7 @@
 
 {% schema %}
 {
-  "name": "Voiceflow Bubble",
+  "name": "Ai-Agent Bubble",
   "target": "section",
   "settings": [
     {

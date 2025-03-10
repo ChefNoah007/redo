@@ -31,7 +31,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   });
 };
 
-const API_URL = "https://redo-ia4o.onrender.com";
+// Use the SHOPIFY_APP_URL environment variable for the API URL
+const API_URL = process.env.SHOPIFY_APP_URL || "https://redo-ia4o.onrender.com";
 
 interface Transcript {
   _id: string;
@@ -83,7 +84,7 @@ export default function TranscriptViewer() {
       }
       
       try {
-        const response = await fetch("https://redo-ia4o.onrender.com/transcripts", {
+        const response = await fetch(`${API_URL}/transcripts`, {
           method: "GET",
           headers: {
             Authorization: `${API_KEY}`,

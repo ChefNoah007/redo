@@ -90,24 +90,51 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   console.log('User ID:', userID);
 
-  // Voiceflow-Einstellungen direkt im Code definiert
-  // Diese Werte wurden aus app/utils/voiceflow-settings.server.js übernommen
-  let VF_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
-  let VF_PROJECT_ID = "6703af9afcd0ea507e9c5369";
-  let VF_VERSION_ID = "6703af9afcd0ea507e9c536a";
+  // Voiceflow-Einstellungen werden dynamisch geladen
+  let VF_KEY, VF_PROJECT_ID, VF_VERSION_ID;
   const currentUrl = window.location.href;
   const pageTitle = document.title;
   console.log('Aktuelle URL:', currentUrl);
   console.log('Seitentitel:', pageTitle);
 
-  // Dummy-Funktion, die immer erfolgreich ist
+  // Funktion zum Laden der Voiceflow-Einstellungen vom Server
   async function loadVoiceflowSettings() {
-    console.log('Voiceflow-Einstellungen direkt geladen:', {
-      vf_key: VF_KEY,
-      vf_project_id: VF_PROJECT_ID,
-      vf_version_id: VF_VERSION_ID
-    });
-    return true;
+    try {
+      const response = await fetch('/api/voiceflow-settings');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      
+      // Einstellungen aus der API-Antwort übernehmen
+      VF_KEY = data.vf_key;
+      VF_PROJECT_ID = data.vf_project_id;
+      VF_VERSION_ID = data.vf_version_id;
+      
+      console.log('Voiceflow-Einstellungen geladen:', {
+        vf_key: VF_KEY,
+        vf_project_id: VF_PROJECT_ID,
+        vf_version_id: VF_VERSION_ID
+      });
+      
+      // Prüfen, ob alle erforderlichen Einstellungen vorhanden sind
+      if (!VF_KEY || !VF_PROJECT_ID || !VF_VERSION_ID) {
+        console.warn('Unvollständige Voiceflow-Einstellungen, verwende Standardwerte');
+        // Standardwerte setzen, falls Einstellungen fehlen
+        VF_KEY = VF_KEY || "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
+        VF_PROJECT_ID = VF_PROJECT_ID || "6703af9afcd0ea507e9c5369";
+        VF_VERSION_ID = VF_VERSION_ID || "6703af9afcd0ea507e9c536a";
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Fehler beim Laden der Voiceflow-Einstellungen:', error);
+      // Standardwerte setzen, falls ein Fehler auftritt
+      VF_KEY = "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi";
+      VF_PROJECT_ID = "6703af9afcd0ea507e9c5369";
+      VF_VERSION_ID = "6703af9afcd0ea507e9c536a";
+      return false;
+    }
   }
 
   // NEU: Seiteninhalt extrahieren

@@ -1,37 +1,28 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "be08ec147dace0a73fee096e4a6e9ca8"
-application_url = "https://actual-monetary-behavioral-sept.trycloudflare.com"
+client_id = "a2c920f8e834d3f84ead83e9161b126d"
+application_url = "https://capacity-phases-favour-usgs.trycloudflare.com"
 embedded = true
-name = "redo"
-handle = "redo"
+name = "Ai-Agent"
+handle = "ai-agent-15"
+
+[build]
+include_config_on_deploy = true
+automatically_update_urls_on_dev = false
 
 [webhooks]
 api_version = "2025-01"
 
-  [[webhooks.subscriptions]]
-  topics = [ "app/uninstalled" ]
-  uri = "/webhooks/app/uninstalled"
-
-  [[webhooks.subscriptions]]
-  topics = [ "app/scopes_update" ]
-  uri = "/webhooks/app/scopes_update"
-
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_products, read_metaobjects, write_metaobjects,read_orders"
+scopes = ""
 
 [auth]
 redirect_urls = [
-  "https://actual-monetary-behavioral-sept.trycloudflare.com/auth/callback",
-  "https://actual-monetary-behavioral-sept.trycloudflare.com/auth/shopify/callback",
-  "https://actual-monetary-behavioral-sept.trycloudflare.com/api/auth/callback"
+  "https://capacity-phases-favour-usgs.trycloudflare.com/auth/callback",
+  "https://capacity-phases-favour-usgs.trycloudflare.com/auth/shopify/callback",
+  "https://capacity-phases-favour-usgs.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]
 embedded = false
-
-[build]
-dev_store_url = "quickstart-e5f7c1c4.myshopify.com"
-automatically_update_urls_on_dev = false
-include_config_on_deploy = true

@@ -14,6 +14,9 @@ import {
 } from '@shopify/polaris';
 import { useState } from 'react';
 
+// Use the SHOPIFY_APP_URL environment variable for the API URL
+const API_URL = process.env.SHOPIFY_APP_URL || "https://redo-ia4o.onrender.com";
+
 export default function SyncPage() {
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -35,8 +38,8 @@ export default function SyncPage() {
     try {
       // Determine which endpoint to call based on the selected sync type
       const endpoint = syncType === 'products' 
-        ? 'https://redo-ia4o.onrender.com/api/synchronize'
-        : 'https://redo-ia4o.onrender.com/api/synchronize-urls';
+        ? `${API_URL}/api/synchronize`
+        : `${API_URL}/api/synchronize-urls`;
       
       const response = await fetch(endpoint, {
         method: 'POST',

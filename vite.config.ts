@@ -2,6 +2,7 @@ import { vitePlugin as remix } from "@remix-run/dev";
 import { installGlobals } from "@remix-run/node";
 import { defineConfig, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 installGlobals({ nativeFetch: true });
 
@@ -50,6 +51,13 @@ export default defineConfig({
     include: ["react-chartjs-2", "chart.js"],
   },
   plugins: [
+    nodePolyfills({
+      globals: {
+        Buffer: true,
+        global: true,
+        process: true,
+      },
+    }),
     remix({
       ignoredRouteFiles: ["**/.*"],
       future: {

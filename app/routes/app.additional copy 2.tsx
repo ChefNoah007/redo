@@ -25,6 +25,9 @@ export default function SettingsPage() {
   const [containerBoxShadow, setContainerBoxShadow] = useState('0px 0px 200px rgba(0, 0, 0, 0.2)');
   const [fontFamily, setFontFamily] = useState('Assistant, sans-serif');
   const [fontSize, setFontSize] = useState(16);
+  
+  // Integration-Einstellungen
+  const [judgeApiToken, setJudgeApiToken] = useState('');
 
   const [toastActive, setToastActive] = useState(false);
   const [toastContent, setToastContent] = useState('');
@@ -55,6 +58,9 @@ export default function SettingsPage() {
            setContainerBoxShadow(data.settings.container_box_shadow || '0px 0px 200px rgba(0, 0, 0, 0.2)');
            setFontFamily(data.settings.font_family || 'Assistant, sans-serif');
            setFontSize(data.settings.font_size || 16);
+           
+           // Integration-Einstellungen laden
+           setJudgeApiToken(data.settings.judge_api_token || '');
          }
       });
   }, []);
@@ -79,6 +85,8 @@ export default function SettingsPage() {
       container_box_shadow: containerBoxShadow,
       font_family: fontFamily,
       font_size: fontSize,
+      // Integration-Einstellungen
+      judge_api_token: judgeApiToken,
     };
 
     const response = await fetch('/api/save-settings', {
@@ -126,6 +134,9 @@ export default function SettingsPage() {
                 <TextField label="Container Box Shadow (CSS)" value={containerBoxShadow} onChange={setContainerBoxShadow} autoComplete="off" />
                 <TextField label="Font Family" value={fontFamily} onChange={setFontFamily} autoComplete="off" />
                 <TextField type="number" label="Font Size (px)" value={fontSize.toString()} onChange={(value)=> setFontSize(Number(value))} autoComplete="off" />
+                
+                <TextField label="Judge.me API Token" value={judgeApiToken} onChange={setJudgeApiToken} autoComplete="off" helpText="API-Token für die Judge.me Integration (optional)" />
+                
                 <Button onClick={handleSave}>Speichern</Button>
               </FormLayout>
             </Card>
