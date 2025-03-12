@@ -1,12 +1,8 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-<<<<<<< HEAD
-client_id = "a2c920f8e834d3f84ead83e9161b126d"
-application_url = "https://capacity-phases-favour-usgs.trycloudflare.com"
-=======
 client_id = "be08ec147dace0a73fee096e4a6e9ca8"
 application_url = "https://redo-ia4o.onrender.com"
->>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy))
+
 embedded = true
 name = "Ai-Agent"
 handle = "ai-agent-15"
@@ -24,15 +20,9 @@ scopes = ""
 
 [auth]
 redirect_urls = [
-<<<<<<< HEAD
-  "https://capacity-phases-favour-usgs.trycloudflare.com/auth/callback",
-  "https://capacity-phases-favour-usgs.trycloudflare.com/auth/shopify/callback",
-  "https://capacity-phases-favour-usgs.trycloudflare.com/api/auth/callback"
-=======
   "https://redo-ia4o.onrender.com/auth/callback",
   "https://redo-ia4o.onrender.com/auth/shopify/callback",
   "https://redo-ia4o.onrender.com/api/auth/callback"
->>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy))
 ]
 
 [pos]

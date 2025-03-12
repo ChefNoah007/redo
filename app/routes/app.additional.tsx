@@ -33,13 +33,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   });
 };
 
-<<<<<<< HEAD
-// Use the SHOPIFY_APP_URL environment variable for the API URL
-const API_URL = process.env.SHOPIFY_APP_URL || "https://redo-ia4o.onrender.com";
-=======
 // Fallback API URL für den Proxy-Server
 const FALLBACK_API_URL = APP_URL;
->>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy))
 
 interface Transcript {
   _id: string;
@@ -93,13 +88,9 @@ export default function TranscriptViewer() {
       }
       
       try {
-<<<<<<< HEAD
-        const response = await fetch(`${API_URL}/transcripts`, {
-=======
         // Versuche zuerst, die Transkripte direkt von der Voiceflow API zu holen
         console.log(`Transcript viewer - Fetching from Voiceflow API: ${VOICEFLOW_API_URL}/transcripts/${PROJECT_ID}`);
         const response = await fetch(`${VOICEFLOW_API_URL}/transcripts/${PROJECT_ID}`, {
->>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy))
           method: "GET",
           headers: {
             Authorization: API_KEY,

@@ -3,11 +3,7 @@ import { json } from "@remix-run/node";
 import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "../db.server.cjs";
-<<<<<<< HEAD
-import { authenticate } from "../shopify.server";
-=======
 import { getShopDomain } from "../utils/env-config.server";
->>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy))
 
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY,
@@ -28,16 +24,9 @@ export async function action({ request }) {
     const { settings } = await request.json();
     const value = JSON.stringify(settings);
   
-<<<<<<< HEAD
-    // Authenticate and get the current shop
-    const { admin, session } = await authenticate.admin(request);
-    const shopDomain = session.shop;
-    
-=======
     const shopDomain = getShopDomain();
     const offlineSessionId = shopify.session.getOfflineId(shopDomain);
     const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
->>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy))
     if (!session) {
       return json({ success: false, error: `No session found for shop ${shopDomain}` }, { status: 500 });
     }
