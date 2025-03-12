@@ -13,6 +13,7 @@ import {
   Text,
 } from '@shopify/polaris';
 import { useState } from 'react';
+import { API_SYNCHRONIZE_ENDPOINT, API_SYNCHRONIZE_URLS_ENDPOINT } from '../utils/env-config';
 
 // Use the SHOPIFY_APP_URL environment variable for the API URL
 const API_URL = process.env.SHOPIFY_APP_URL || "https://redo-ia4o.onrender.com";
@@ -38,8 +39,13 @@ export default function SyncPage() {
     try {
       // Determine which endpoint to call based on the selected sync type
       const endpoint = syncType === 'products' 
+<<<<<<< HEAD
         ? `${API_URL}/api/synchronize`
         : `${API_URL}/api/synchronize-urls`;
+=======
+        ? API_SYNCHRONIZE_ENDPOINT
+        : API_SYNCHRONIZE_URLS_ENDPOINT;
+>>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy))
       
       const response = await fetch(endpoint, {
         method: 'POST',

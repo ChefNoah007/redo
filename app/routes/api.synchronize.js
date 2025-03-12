@@ -3,6 +3,7 @@ import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "../db.server.cjs";
 import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
+import { getShopDomain } from "../utils/env-config.server";
 
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY,
@@ -21,7 +22,7 @@ export const action = async ({ request }) => {
     const body = await request.json();
     const overwrite = body.overwrite === true;
 
-    const shopDomain = "coffee-principles.myshopify.com";
+    const shopDomain = getShopDomain();
     const offlineSessionId = shopify.session.getOfflineId(shopDomain);
 
     const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);

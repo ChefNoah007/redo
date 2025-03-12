@@ -2,6 +2,7 @@ import { json } from "@remix-run/node";
 import axios from "axios";
 import { parseStringPromise } from "xml2js";
 import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
+import { getShopDomain } from "../utils/env-config.server";
 
 export const action = async ({ request }) => {
   // Get Voiceflow settings from metafields
@@ -11,8 +12,8 @@ export const action = async ({ request }) => {
     const body = await request.json();
     const overwrite = body.overwrite === true;
 
-    // Hardcoded shop domain - in a real app, this would be dynamic
-    const shopDomain = "coffee-principles.myshopify.com";
+    // Get shop domain from environment variables
+    const shopDomain = getShopDomain();
     
     // Fetch the sitemap
     const sitemapUrl = `https://${shopDomain}/sitemap.xml`;

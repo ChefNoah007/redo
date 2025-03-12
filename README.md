@@ -1,4 +1,16 @@
+<<<<<<< HEAD
 # AI-Agent Shopify App
+=======
+# Shopify App Template - Remix
+## Github Push
+1. git remote rm origin
+git remote add origin https://github.com/ChefNoah007/redo.git
+
+2.  git add .         
+git commit -m "<Kommentar>"
+git push origin main
+
+>>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy))
 
 Eine KI-Chat-App für Shopify-Stores, die mit Voiceflow integriert ist.
 

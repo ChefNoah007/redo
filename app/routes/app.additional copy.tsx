@@ -10,6 +10,7 @@ import {
   Checkbox, // <-- wir importieren Checkbox
 } from '@shopify/polaris';
 import { useState } from 'react';
+import { API_SYNCHRONIZE_ENDPOINT } from '../utils/env-config';
 
 // Use the SHOPIFY_APP_URL environment variable for the API URL
 const API_URL = process.env.SHOPIFY_APP_URL || "https://redo-ia4o.onrender.com";
@@ -25,7 +26,11 @@ export default function SyncPage() {
     setIsSynchronizing(true);
     try {
       // ⬇️ Body enthält jetzt { overwrite }
+<<<<<<< HEAD
       const response = await fetch(`${API_URL}/api/synchronize`, {
+=======
+      const response = await fetch(API_SYNCHRONIZE_ENDPOINT, {
+>>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy))
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,0 +1,47 @@
+<!-- Voiceflow Settings Block -->
+<!-- Dieser Block lädt die Voiceflow-Einstellungen aus den Metadaten -->
+<!-- Er hat keine sichtbaren Elemente und kann in jeder Section platziert werden -->
+
+<div style="display: none;" id="voiceflow-settings-container">
+  <!-- Unsichtbarer Container für Voiceflow-Einstellungen -->
+</div>
+
+<script>
+  console.log('voiceflow_settings.liquid: Checking for metafields...');
+  console.log('voiceflow_settings.liquid: shop.metafields.voiceflow_settings exists?', {% if shop.metafields.voiceflow_settings %}true{% else %}false{% endif %});
+  console.log('voiceflow_settings.liquid: shop.metafields.voiceflow_settings.api_credentials exists?', {% if shop.metafields.voiceflow_settings.api_credentials %}true{% else %}false{% endif %});
+  
+  window.VOICEFLOW_SETTINGS = {% if shop.metafields.voiceflow_settings.api_credentials %}
+    {{ shop.metafields.voiceflow_settings.api_credentials.value | json }}
+  {% else %}
+    {
+      "vf_key": "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi",
+      "vf_project_id": "6703af9afcd0ea507e9c5369",
+      "vf_version_id": "6703af9afcd0ea507e9c536a"
+    }
+  {% endif %};
+  
+  console.log('voiceflow_settings.liquid: VOICEFLOW_SETTINGS initialized:', {
+    vf_key: window.VOICEFLOW_SETTINGS.vf_key ? "Present (masked)" : "Missing",
+    vf_project_id: window.VOICEFLOW_SETTINGS.vf_project_id || "Missing",
+    vf_version_id: window.VOICEFLOW_SETTINGS.vf_version_id || "Missing"
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Voiceflow Settings",
+  "target": "section",
+  "javascript": "voiceflow-settings.js",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Dieser Block lädt die Voiceflow-Einstellungen aus den Metadaten. Er hat keine sichtbaren Elemente und kann in jeder Section platziert werden."
+    },
+    {
+      "type": "paragraph",
+      "content": "Empfohlen: Platzieren Sie diesen Block im Header-Bereich, damit die Einstellungen vor den Chat-Komponenten geladen werden."
+    }
+  ]
+}
+{% endschema %}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { CSSProperties } from 'react';
 import {
   Page,
@@ -8,12 +8,14 @@ import {
   List,
   Select,
   Button,
+  ButtonGroup,
   Card,
   Box,
 } from "@shopify/polaris";
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData, useSearchParams } from "@remix-run/react";
 import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
+import { VOICEFLOW_API_URL, APP_URL } from "../utils/env-config";
 import ReactMarkdown from 'react-markdown';
 
 // Define the type for our loader data
@@ -31,8 +33,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   });
 };
 
+<<<<<<< HEAD
 // Use the SHOPIFY_APP_URL environment variable for the API URL
 const API_URL = process.env.SHOPIFY_APP_URL || "https://redo-ia4o.onrender.com";
+=======
+// Fallback API URL für den Proxy-Server
+const FALLBACK_API_URL = APP_URL;
+>>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy))
 
 interface Transcript {
   _id: string;
@@ -69,6 +76,8 @@ export default function TranscriptViewer() {
   const [selectedID, setSelectedID] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [activeView, setActiveView] = useState<'list' | 'details'>('list');
 
   // API-Call 1: Transkriptübersicht
   const fetchTranscripts = async () => {
@@ -84,10 +93,16 @@ export default function TranscriptViewer() {
       }
       
       try {
+<<<<<<< HEAD
         const response = await fetch(`${API_URL}/transcripts`, {
+=======
+        // Versuche zuerst, die Transkripte direkt von der Voiceflow API zu holen
+        console.log(`Transcript viewer - Fetching from Voiceflow API: ${VOICEFLOW_API_URL}/transcripts/${PROJECT_ID}`);
+        const response = await fetch(`${VOICEFLOW_API_URL}/transcripts/${PROJECT_ID}`, {
+>>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy))
           method: "GET",
           headers: {
-            Authorization: `${API_KEY}`,
+            Authorization: API_KEY,
             Accept: "application/json",
           },
         });
@@ -153,7 +168,9 @@ export default function TranscriptViewer() {
     setSelectedID(transcriptID);
     setDetailsLoading(true); // Ladeanzeige starten
     try {
-      const response = await fetch(`${API_URL}/transcripts/${transcriptID}`, {
+      // Versuche zuerst, die Transkript-Details direkt von der Voiceflow API zu holen
+      console.log(`Transcript viewer - Fetching details from Voiceflow API: ${VOICEFLOW_API_URL}/transcripts/${PROJECT_ID}/${transcriptID}`);
+      const response = await fetch(`${VOICEFLOW_API_URL}/transcripts/${PROJECT_ID}/${transcriptID}`, {
         method: "GET",
         headers: {
           Authorization: API_KEY,
@@ -224,6 +241,29 @@ export default function TranscriptViewer() {
     }
   };
   
+
+  // Media query for responsive design
+  const checkIsMobile = useCallback(() => {
+    setIsMobileView(window.innerWidth < 768);
+  }, []);
+
+  useEffect(() => {
+    // Initial check
+    checkIsMobile();
+    
+    // Add event listener for window resize
+    window.addEventListener('resize', checkIsMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, [checkIsMobile]);
+
+  // Switch to details view when a transcript is selected on mobile
+  useEffect(() => {
+    if (isMobileView && selectedID) {
+      setActiveView('details');
+    }
+  }, [selectedID, isMobileView]);
 
   // Get userID from URL parameters
   const [searchParams] = useSearchParams();
@@ -318,10 +358,37 @@ export default function TranscriptViewer() {
   };
 
   return (
-    <Page title="Transcripts">
+    <Page 
+      title="Transcripts"
+      backAction={isMobileView && activeView === 'details' ? {
+        onAction: () => setActiveView('list'),
+        content: 'Back to List'
+      } : undefined}
+    >
+      {isMobileView && (
+        <div style={{ marginBottom: '16px' }}>
+          <ButtonGroup>
+            <Button 
+              pressed={activeView === 'list'} 
+              onClick={() => setActiveView('list')}
+            >
+              Transcript List
+            </Button>
+            <Button 
+              pressed={activeView === 'details'} 
+              onClick={() => setActiveView('details')}
+              disabled={!selectedID}
+            >
+              Transcript Details
+            </Button>
+          </ButtonGroup>
+        </div>
+      )}
+      
       <Layout>
         {/* Linke Seite: Liste der Transkripte */}
-        <Layout.Section variant = "oneThird">
+        {(!isMobileView || (isMobileView && activeView === 'list')) && (
+          <Layout.Section variant = "oneThird">
           <Card>
           <Text as="h2" variant="headingMd">
             Transcripts ({transcripts.length})
@@ -374,10 +441,12 @@ export default function TranscriptViewer() {
               ))}
             </List>
           </Card>
-        </Layout.Section>
+          </Layout.Section>
+        )}
 
         {/* Rechte Seite: Details eines Transkripts */}
-        <Layout.Section>
+        {(!isMobileView || (isMobileView && activeView === 'details')) && (
+          <Layout.Section>
           <Card>
             <Text as="h2" variant="headingMd">
               Transcript Details
@@ -443,7 +512,8 @@ export default function TranscriptViewer() {
               <Text as="p">Select a transcript to view details</Text>
             )}
           </Card>
-        </Layout.Section>
+          </Layout.Section>
+        )}
       </Layout>
     </Page>
   );

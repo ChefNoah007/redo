@@ -90,13 +90,21 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   console.log('User ID:', userID);
 
+<<<<<<< HEAD:extensions/ai-agent/assets/chat-box.js
   // Voiceflow-Einstellungen werden dynamisch geladen
   let VF_KEY, VF_PROJECT_ID, VF_VERSION_ID;
+=======
+  // Voiceflow-Einstellungen werden vom Server geladen
+  let VF_KEY = "";
+  let VF_PROJECT_ID = "";
+  let VF_VERSION_ID = "";
+>>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy)):extensions/beanie-go/assets/chat-box.js
   const currentUrl = window.location.href;
   const pageTitle = document.title;
   console.log('Aktuelle URL:', currentUrl);
   console.log('Seitentitel:', pageTitle);
 
+<<<<<<< HEAD:extensions/ai-agent/assets/chat-box.js
   // Funktion zum Laden der Voiceflow-Einstellungen vom Server
   async function loadVoiceflowSettings() {
     try {
@@ -135,6 +143,72 @@ document.addEventListener('DOMContentLoaded', function () {
       VF_VERSION_ID = "6703af9afcd0ea507e9c536a";
       return false;
     }
+=======
+  // Funktion zum Laden der Voiceflow-Einstellungen
+  async function loadVoiceflowSettings() {
+    return new Promise((resolve) => {
+      try {
+        console.log('Prüfe Voiceflow-Einstellungen...');
+        
+        // Prüfen, ob die Einstellungen vom Snippet gesetzt wurden
+        if (window.VOICEFLOW_SETTINGS) {
+          console.log('Verwende Voiceflow-Einstellungen aus dem Snippet...');
+          
+          // Einstellungen global setzen
+          VF_KEY = window.VOICEFLOW_SETTINGS.vf_key;
+          VF_PROJECT_ID = window.VOICEFLOW_SETTINGS.vf_project_id;
+          VF_VERSION_ID = window.VOICEFLOW_SETTINGS.vf_version_id;
+          
+          console.log('Voiceflow-Einstellungen erfolgreich geladen:', {
+            vf_key: VF_KEY ? "Present (masked)" : "Missing",
+            vf_project_id: VF_PROJECT_ID || "Missing",
+            vf_version_id: VF_VERSION_ID || "Missing"
+          });
+          
+          resolve(true);
+        } else {
+          console.warn('Keine Voiceflow-Einstellungen gefunden, verwende Fallback-Einstellungen...');
+          
+          // Fallback zu statischen Einstellungen
+          const settings = {
+            vf_key: "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi",
+            vf_project_id: "6703af9afcd0ea507e9c5369",
+            vf_version_id: "6703af9afcd0ea507e9c536a"
+          };
+          
+          // Einstellungen global setzen
+          VF_KEY = settings.vf_key;
+          VF_PROJECT_ID = settings.vf_project_id;
+          VF_VERSION_ID = settings.vf_version_id;
+          
+          console.log('Fallback-Voiceflow-Einstellungen geladen:', {
+            vf_key: VF_KEY ? "Present (masked)" : "Missing",
+            vf_project_id: VF_PROJECT_ID || "Missing",
+            vf_version_id: VF_VERSION_ID || "Missing"
+          });
+          
+          resolve(true);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Voiceflow-Einstellungen:', error);
+        
+        // Fallback zu statischen Einstellungen im Fehlerfall
+        const settings = {
+          vf_key: "VF.DM.670508f0cd8f2c59f1b534d4.t6mfdXeIfuUSTqUi",
+          vf_project_id: "6703af9afcd0ea507e9c5369",
+          vf_version_id: "6703af9afcd0ea507e9c536a"
+        };
+        
+        // Einstellungen global setzen
+        VF_KEY = settings.vf_key;
+        VF_PROJECT_ID = settings.vf_project_id;
+        VF_VERSION_ID = settings.vf_version_id;
+        
+        console.log('Fehlerfall: Fallback-Voiceflow-Einstellungen geladen');
+        resolve(true);
+      }
+    });
+>>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy)):extensions/beanie-go/assets/chat-box.js
   }
 
   // NEU: Seiteninhalt extrahieren

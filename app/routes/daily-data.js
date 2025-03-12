@@ -5,6 +5,7 @@ import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "../db.server.cjs";
 import { getCachedData, setCachedData } from "../utils/redis-client.server";
+import { getShopDomain } from "../utils/env-config.server";
 
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY,
@@ -28,7 +29,7 @@ export async function loader({ request }) {
     console.log("Calculated start date:", startDate.toISOString());
 
     // Create a cache key based on the shop domain and time range
-    const shopDomain = "coffee-principles.myshopify.com";
+    const shopDomain = getShopDomain();
     const cacheKey = `orders:${shopDomain}:${timeRangeParam}`;
     
     // Try to get data from cache first
