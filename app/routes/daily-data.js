@@ -28,8 +28,17 @@ export async function loader({ request }) {
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     console.log("Calculated start date:", startDate.toISOString());
 
+    // Get shop domain from URL parameter or fallback to environment variable
+    const shopDomain = url.searchParams.get("shop") || getShopDomain();
+    
+    if (!shopDomain) {
+      console.error("❌ Fehler: Shop-Domain fehlt in der Anfrage!");
+      return json({ success: false, error: "Received invalid shop argument" }, { status: 500 });
+    }
+    
+    console.log(`🔍 Verarbeite Anfrage für Shop: ${shopDomain}`);
+    
     // Create a cache key based on the shop domain and time range
-    const shopDomain = getShopDomain();
     const cacheKey = `orders:${shopDomain}:${timeRangeParam}`;
     
     // Try to get data from cache first

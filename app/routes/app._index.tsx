@@ -146,7 +146,13 @@ export default function Index() {
       return cachedRevenue[selectedTimeRange];
     }
     try {
-      const response = await fetch(`/daily-data?timeRange=${selectedTimeRange}`, {
+      // Get the shop domain from the URL
+      const url = new URL(window.location.href);
+      const shop = url.searchParams.get("shop") || "";
+      
+      console.log(`Dashboard - Fetching daily revenue with shop: ${shop}`);
+      
+      const response = await fetch(`/daily-data?timeRange=${selectedTimeRange}&shop=${shop}`, {
         method: "GET",
       });
       if (!response.ok) {

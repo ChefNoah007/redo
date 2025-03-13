@@ -22,11 +22,7 @@ register(({ analytics }) => {
       }
   
       // Dann deinen Tracking-Call an dein Backend
-<<<<<<< HEAD:extensions/ai-agent/assets/tracking.js
-      fetch((window.API_URL || "https://redo-ia4o.onrender.com") + "/track", {
-=======
       fetch("https://ai-agent-iuss.onrender.com/track", {
->>>>>>> 428c187 (transript mobie + env update (Ai-Agents copy)):extensions/beanie-go/assets/tracking.js
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -39,3 +35,4 @@ register(({ analytics }) => {
       });
     });
   });
+  
