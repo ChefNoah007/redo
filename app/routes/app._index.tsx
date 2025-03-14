@@ -146,9 +146,19 @@ export default function Index() {
       return cachedRevenue[selectedTimeRange];
     }
     try {
-      // Get the shop domain from the URL
+      // Get the shop domain from the URL or localStorage
       const url = new URL(window.location.href);
-      const shop = url.searchParams.get("shop") || "";
+      let shop = url.searchParams.get("shop") || "";
+      
+      // If shop is not in URL, try to get it from localStorage
+      if (!shop) {
+        shop = localStorage.getItem("shopDomain") || "";
+        console.log(`Dashboard - Retrieved shop from localStorage: ${shop}`);
+      } else {
+        // Store shop in localStorage for future use
+        localStorage.setItem("shopDomain", shop);
+        console.log(`Dashboard - Stored shop in localStorage: ${shop}`);
+      }
       
       console.log(`Dashboard - Fetching daily revenue with shop: ${shop}`);
       
