@@ -279,16 +279,22 @@ document.addEventListener('DOMContentLoaded', function () {
   const vfSaveTranscript = async () => {
     // Versuchen, einen Benutzernamen zu bekommen
     let userName = "User"; // Standardwert
+    let nameSource = "default";
     
     // Versuchen, den Namen aus verschiedenen Quellen zu bekommen
     // 1. Prüfen, ob der Benutzer angemeldet ist (Shopify-Kunden)
     if (window.Shopify && window.Shopify.customer && window.Shopify.customer.first_name) {
       userName = `${window.Shopify.customer.first_name} ${window.Shopify.customer.last_name || ''}`.trim();
+      nameSource = "Shopify customer";
     } 
     // 2. Alternativ: Prüfen, ob ein Name in localStorage gespeichert ist
     else if (localStorage.getItem('customerName')) {
       userName = localStorage.getItem('customerName');
+      nameSource = "localStorage";
     }
+    
+    // Log für Debugging-Zwecke
+    console.log(`vfSaveTranscript - Benutzername gefunden: "${userName}" (Quelle: ${nameSource})`);
     
     const transcriptsUrl = 'https://api.voiceflow.com/v2/transcripts';
     const transcriptsOptions = {
@@ -302,7 +308,9 @@ document.addEventListener('DOMContentLoaded', function () {
         projectID: VF_PROJECT_ID,
         versionID: VF_VERSION_ID,
         sessionID: `${userID}`,
-        name: userName // Hier fügen wir den Namen hinzu
+        user: {
+          name: userName // Hier fügen wir den Namen in der korrekten Struktur hinzu
+        }
       }),
     };
     console.log('vfSaveTranscript - Sende Transcript-Optionen:', transcriptsOptions);

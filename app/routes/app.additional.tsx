@@ -45,8 +45,12 @@ interface Transcript {
   device?: string;
   os?: string;
   updatedAt?: string;
-  name?: string;
+  name?: string; // Altes Feld, behalten für Abwärtskompatibilität
   image?: string;
+  user?: {
+    name: string;
+    image?: string;
+  };
 }
 
 
@@ -404,7 +408,7 @@ export default function TranscriptViewer() {
                       {/* Name des Users */}
                       <div style={{ marginBottom: '5px' }}>
                         <Text as="h2" variant="headingSm" fontWeight="bold">
-                          {transcript.name || 'User'}
+                          {transcript.user?.name || 'User'}
                         </Text>
                       </div>
                       {/* User ID */}
