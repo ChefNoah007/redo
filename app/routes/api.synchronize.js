@@ -10,9 +10,21 @@ export const action = async ({ request }) => {
     const overwrite = body.overwrite === true;
 
     // Authenticate with Shopify and get the admin API client
-    const { admin, session } = await authenticate.admin(request);
-    if (!admin || !session) {
+    const authResult = await authenticate.admin(request);
+    if (!authResult) {
       throw new Error("Authentication failed");
+    }
+    
+    // Get the admin API client
+    const admin = authResult.admin;
+    if (!admin) {
+      throw new Error("Admin API client not available");
+    }
+
+    // Get the session from the auth result
+    const { session } = authResult;
+    if (!session) {
+      throw new Error("No session found in auth result");
     }
 
     // Get the shop domain from the session
@@ -21,26 +33,91 @@ export const action = async ({ request }) => {
       throw new Error("No shop found in session");
     }
 
-    // Use the admin API client to fetch products
-    const shopifyAPI = admin.rest;
-
+    // Use GraphQL to fetch products
     let allProducts = [];
     let hasNextPage = true;
-    let nextPageCursor = undefined;
+    let cursor = null;
 
     while (hasNextPage) {
-      const { body, pageInfo } = await shopifyAPI.get({
-        path: "products",
-        query: {
-          limit: 250,
-          status: "active", // Nur aktive Produkte
-          ...(nextPageCursor ? { page_info: nextPageCursor } : {}),
+      const query = `
+        query GetProducts($cursor: String) {
+          products(first: 250, after: $cursor) {
+            edges {
+              cursor
+              node {
+                id
+                title
+                handle
+                description
+                descriptionHtml
+                onlineStoreUrl
+                variants(first: 100) {
+                  edges {
+                    node {
+                      id
+                      title
+                      price
+                      inventoryQuantity
+                    }
+                  }
+                }
+                images(first: 10) {
+                  edges {
+                    node {
+                      src
+                    }
+                  }
+                }
+                tags
+              }
+            }
+            pageInfo {
+              hasNextPage
+            }
+          }
+        }
+      `;
+
+      const response = await admin.graphql(query, {
+        variables: {
+          cursor: cursor,
         },
       });
 
-      allProducts = [...allProducts, ...body.products];
-      nextPageCursor = pageInfo?.nextPage?.query.page_info;
-      hasNextPage = Boolean(nextPageCursor);
+      const responseJson = await response.json();
+      
+      if (!responseJson.data || !responseJson.data.products) {
+        throw new Error("Invalid GraphQL response structure");
+      }
+
+      const products = responseJson.data.products.edges.map(edge => {
+        const product = edge.node;
+        return {
+          id: product.id.split('/').pop(),
+          title: product.title,
+          handle: product.handle,
+          body_html: product.descriptionHtml,
+          online_store_url: product.onlineStoreUrl,
+          variants: product.variants.edges.map(variantEdge => ({
+            title: variantEdge.node.title,
+            price: variantEdge.node.price,
+            inventory_quantity: variantEdge.node.inventoryQuantity
+          })),
+          images: product.images.edges.map(imageEdge => ({
+            src: imageEdge.node.src
+          })),
+          tags: product.tags
+        };
+      });
+
+      allProducts = [...allProducts, ...products];
+      hasNextPage = responseJson.data.products.pageInfo.hasNextPage;
+      
+      if (hasNextPage && responseJson.data.products.edges.length > 0) {
+        cursor = responseJson.data.products.edges[responseJson.data.products.edges.length - 1].cursor;
+      } else {
+        hasNextPage = false;
+      }
     }
 
     const normalizedItems = allProducts.map((product) => {

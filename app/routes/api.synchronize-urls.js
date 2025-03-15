@@ -13,9 +13,18 @@ export const action = async ({ request }) => {
     const overwrite = body.overwrite === true;
 
     // Authenticate with Shopify and get the admin API client
-    const { session } = await authenticate.admin(request);
-    if (!session) {
+    const authResult = await authenticate.admin(request);
+    if (!authResult) {
       throw new Error("Authentication failed");
+    }
+
+    // Log the structure of the authResult to understand what's available
+    console.log("Auth result structure in URL sync:", Object.keys(authResult));
+    
+    // Get the session from the auth result
+    const { session } = authResult;
+    if (!session) {
+      throw new Error("No session found in auth result");
     }
 
     // Get the shop domain from the session
