@@ -1,19 +1,6 @@
 import { json } from "@remix-run/node";
-import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
-import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
-import prisma from "../db.server.cjs";
 import { getVoiceflowSettings } from "../utils/voiceflow-settings.server";
-import { getShopDomain } from "../utils/env-config.server";
-
-const shopify = shopifyApi({
-  apiKey: process.env.SHOPIFY_API_KEY,
-  apiSecretKey: process.env.SHOPIFY_API_SECRET,
-  scopes: process.env.SCOPES.split(","),
-  hostName: process.env.SHOPIFY_APP_URL,
-  apiVersion: LATEST_API_VERSION,
-  isEmbeddedApp: true,
-  sessionStorage: new PrismaSessionStorage(prisma),
-});
+import { authenticate } from "../shopify.server";
 
 export const action = async ({ request }) => {
   // Voiceflow-Settings aus den Metafeldern abrufen
@@ -22,15 +9,20 @@ export const action = async ({ request }) => {
     const body = await request.json();
     const overwrite = body.overwrite === true;
 
-    const shopDomain = getShopDomain();
-    const offlineSessionId = shopify.session.getOfflineId(shopDomain);
-
-    const session = await shopify.config.sessionStorage.loadSession(offlineSessionId);
-    if (!session) {
-      throw new Error(`No offline session found for shop ${shopDomain}`);
+    // Authenticate with Shopify and get the admin API client
+    const { admin, session } = await authenticate.admin(request);
+    if (!admin || !session) {
+      throw new Error("Authentication failed");
     }
 
-    const shopifyAPI = new shopify.clients.Rest({ session });
+    // Get the shop domain from the session
+    const shopDomain = session.shop;
+    if (!shopDomain) {
+      throw new Error("No shop found in session");
+    }
+
+    // Use the admin API client to fetch products
+    const shopifyAPI = admin.rest;
 
     let allProducts = [];
     let hasNextPage = true;
