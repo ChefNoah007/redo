@@ -140,7 +140,12 @@ export const action = async ({ request }) => {
       }));
 
       const images = product.images.map((img) => img.src);
-      const tags = product.tags ? product.tags.split(",").map((tag) => tag.trim()) : [];
+      // Handle tags as an array (from GraphQL) or as a string (from REST API)
+      const tags = product.tags 
+        ? (Array.isArray(product.tags) 
+            ? product.tags 
+            : product.tags.split(",").map((tag) => tag.trim())) 
+        : [];
 
       // Überprüfen, ob mindestens eine Variante einen positiven Lagerbestand hat
       const isAvailable = product.variants.some(
