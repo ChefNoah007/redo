@@ -296,7 +296,6 @@ export default function Index() {
   const dynamicLabels =
     dailyInteractions?.map((entry) => {
       const date = new Date(entry.date);
-      date.setDate(date.getDate() + 1);
       return date.toLocaleDateString("de-DE", {
         day: "2-digit",
         month: "2-digit",
