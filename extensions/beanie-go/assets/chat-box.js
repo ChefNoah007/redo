@@ -80,6 +80,42 @@ document.addEventListener('DOMContentLoaded', function () {
   let autoScrollEnabled = false;
   let userHasInteracted = false;
   
+  // Keep-Alive Funktion, die regelmäßig eine Anfrage sendet, um den Server aktiv zu halten
+  function setupKeepAlive() {
+    // Ping-Intervall (10 Minuten = 600000 ms)
+    const pingInterval = 600000;
+    
+    // Funktion zum Senden des Ping-Requests
+    function pingServer() {
+      console.log("Sende Keep-Alive Ping an Server...");
+      fetch('/api/ping')
+        .then(response => {
+          if (response.ok) {
+            console.log("Server-Ping erfolgreich");
+          } else {
+            console.warn("Server-Ping fehlgeschlagen:", response.status);
+          }
+        })
+        .catch(error => {
+          console.error("Fehler beim Server-Ping:", error);
+        });
+    }
+    
+    // Ping-Intervall starten
+    const intervalId = setInterval(pingServer, pingInterval);
+    
+    // Initial einen Ping senden
+    pingServer();
+    
+    // Intervall bei Verlassen der Seite aufräumen
+    window.addEventListener('beforeunload', () => {
+      clearInterval(intervalId);
+    });
+  }
+  
+  // Keep-Alive Mechanismus starten
+  setupKeepAlive();
+  
   // Entferne den setTimeout, der vorher autoScrollEnabled aktivierte
 
   // (A) UserID in localStorage
@@ -345,33 +381,170 @@ document.addEventListener('DOMContentLoaded', function () {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  function addAgentMessage(message) {
-    if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
-      const renderer = new marked.Renderer();
-      renderer.link = function() {
-        let href, title, text;
-        if (arguments.length === 1 && typeof arguments[0] === 'object') {
-          const token = arguments[0];
-          href = token.href;
-          title = token.title;
-          text = token.text;
-        } else {
-          [href, title, text] = arguments;
+  // Verbesserte Funktion zum Verarbeiten von Slate-Inhalten
+  function processSlateContent(slate) {
+    if (!slate || !slate.content || !Array.isArray(slate.content)) {
+      console.warn("Ungültiges Slate-Objekt:", slate);
+      return null; // Kein gültiges Slate-Objekt
+    }
+    
+    console.log("Verarbeite Slate-Inhalt:", JSON.stringify(slate, null, 2));
+    
+    let html = '';
+    
+    // Durch alle Inhaltsblöcke iterieren
+    for (const block of slate.content) {
+      if (!block.children || !Array.isArray(block.children)) {
+        console.warn("Ungültiger Block in Slate:", block);
+        continue;
+      }
+      
+      // Durch alle Kindelemente des Blocks iterieren
+      for (const child of block.children) {
+        console.log("Verarbeite Kind-Element:", child);
+        
+        let textContent = child.text || '';
+        
+        // NEUER FALL: Prüfen, ob der Text Markdown-Formatierung oder Links enthält
+        if (textContent.includes('**') || textContent.includes('[') || textContent.includes('http://') || textContent.includes('https://')) {
+          console.log("Markdown-Formatierung oder Links in Slate-Text gefunden:", textContent);
+          // Markdown-Formatierung verarbeiten
+          textContent = processMarkdownFormatting(textContent);
+        } 
+        // Ansonsten die normalen Slate-Formatierungen anwenden
+        else {
+          // Formatierung anwenden - verbesserte Erkennung für fette Schrift
+          if (child.fontWeight) {
+            // Fettschrift erkennen (700, bold, etc.)
+            if (child.fontWeight === '700' || 
+                child.fontWeight === 700 || 
+                child.fontWeight === 'bold' || 
+                child.fontWeight === 'bolder') {
+              console.log(`Fettschrift erkannt für Text: "${textContent}"`);
+              textContent = `<strong style="font-weight: bold;">${textContent}</strong>`;
+            }
+          }
+          
+          if (child.fontStyle === 'italic') {
+            textContent = `<i>${textContent}</i>`;
+          }
+          
+          if (child.underline) {
+            textContent = `<u>${textContent}</u>`;
+          }
+          
+          if (child.code) {
+            textContent = `<code>${textContent}</code>`;
+          }
         }
-        console.log("Renderer.link aufgerufen mit:", href, title, text);
-        return `<a class="link-highlight" href="${href}" title="${title || ''}" target="_blank">${text}</a>`;
-      };
-      message = marked.parse(message, { renderer: renderer });
-    } else {
-      // Fallback
-      message = message.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-      message = message.replace(/\*(.*?)\*/g, '<i>$1</i>');
-      message = message.replace(/\[(.*?)\]\((.*?)\)/g, '<a class="link-highlight" href="$2" target="_blank">$1</a>');
-      message = message.replace(/(\n)+/g, '<br>');
+        
+        html += textContent;
+      }
+      
+      // Zeilenumbruch nach jedem Block hinzufügen
+      html += '<br>';
+    }
+    
+    console.log("Generiertes HTML aus Slate:", html);
+    return html;
+  }
+
+  // Verbesserte Funktion zum Verarbeiten von Markdown-Formatierung und Links
+  function processMarkdownFormatting(message) {
+    console.log("Verarbeite Markdown-Formatierung und Links:", message);
+    
+    // Prüfen, ob die Nachricht Markdown-Formatierung enthält
+    if (!message || typeof message !== 'string') {
+      return message;
+    }
+    
+    // Ersetze Markdown-Formatierung durch HTML
+    let formattedMessage = message;
+    
+    // Prüfen, ob Markdown-Formatierung vorhanden ist
+    const containsBold = /\*\*.*?\*\*/.test(message);
+    
+    if (containsBold) {
+      console.log("Fettschrift-Markdown gefunden in:", message);
+      
+      // Fettschrift (** oder __)
+      formattedMessage = formattedMessage.replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight: bold;">$1</strong>');
+      formattedMessage = formattedMessage.replace(/__(.*?)__/g, '<strong style="font-weight: bold;">$1</strong>');
+      
+      console.log("Nach Fettschrift-Ersetzung:", formattedMessage);
+    }
+    
+    // Kursiv (* oder _) - nur wenn nicht Teil von **
+    const containsItalic = /(?<!\*)\*(?!\*).*?(?<!\*)\*(?!\*)/.test(message);
+    if (containsItalic) {
+      formattedMessage = formattedMessage.replace(/(?<!\*)\*(?!\*)([^*]+)(?<!\*)\*(?!\*)/g, '<i>$1</i>');
+      formattedMessage = formattedMessage.replace(/(?<!_)_(?!_)([^_]+)(?<!_)_(?!_)/g, '<i>$1</i>');
+    }
+    
+    // Markdown-Links [text](url)
+    const containsMarkdownLinks = /\[.*?\]\(.*?\)/.test(message);
+    if (containsMarkdownLinks) {
+      console.log("Markdown-Links gefunden in:", message);
+      formattedMessage = formattedMessage.replace(/\[(.*?)\]\((.*?)\)/g, '<a class="link-highlight" href="$2" target="_blank">$1</a>');
+    }
+    
+    // Spezielle Fälle für URLs mit nachfolgendem Text erkennen
+    // Beispiel: "👉 https://example.com" target="_blank">Hier klicken"
+    const specialUrlPattern = /(https?:\/\/[^\s"]+)"\s+target="_blank">([^<]+)/g;
+    if (specialUrlPattern.test(message)) {
+      console.log("Spezielle URL-Muster gefunden:", message);
+      formattedMessage = formattedMessage.replace(specialUrlPattern, '<a class="link-highlight" href="$1" target="_blank">$2</a>');
+    }
+    
+    // Normale URLs (http://, https://) in Text umwandeln, aber nur wenn sie nicht bereits Teil eines Links sind
+    const urlRegex = /(?<![="])(?<!")(?<!\w>)(https?:\/\/[^\s"]+)(?!")/g;
+    if (urlRegex.test(message)) {
+      console.log("Normale URLs gefunden in:", message);
+      formattedMessage = formattedMessage.replace(urlRegex, '<a class="link-highlight" href="$1" target="_blank">$1</a>');
+    }
+    
+    // Zeilenumbrüche
+    formattedMessage = formattedMessage.replace(/(\n)+/g, '<br>');
+    
+    // Wenn Änderungen vorgenommen wurden, loggen
+    if (formattedMessage !== message) {
+      console.log("Markdown und Links formatiert zu HTML:", formattedMessage);
+    }
+    
+    return formattedMessage;
+  }
+
+  function addAgentMessage(message, isHtml = false) {
+    let formattedMessage = message;
+    
+    if (!isHtml) {
+      // Zuerst unsere eigene Markdown-Verarbeitung anwenden
+      formattedMessage = processMarkdownFormatting(message);
+      
+      // Wenn marked.js verfügbar ist, als Fallback verwenden
+      if (typeof marked !== 'undefined' && typeof marked.parse === 'function' && 
+          // Nur wenn keine Markdown-Formatierung erkannt wurde (keine Änderung)
+          formattedMessage === message) {
+        const renderer = new marked.Renderer();
+        renderer.link = function() {
+          let href, title, text;
+          if (arguments.length === 1 && typeof arguments[0] === 'object') {
+            const token = arguments[0];
+            href = token.href;
+            title = token.title;
+            text = token.text;
+          } else {
+            [href, title, text] = arguments;
+          }
+          console.log("Renderer.link aufgerufen mit:", href, title, text);
+          return `<a class="link-highlight" href="${href}" title="${title || ''}" target="_blank">${text}</a>`;
+        };
+        formattedMessage = marked.parse(message, { renderer: renderer });
+      }
     }
     const messageDiv = document.createElement('div');
     messageDiv.className = 'vf-message vf-message-agent';
-    messageDiv.innerHTML = message;
+    messageDiv.innerHTML = formattedMessage;
     chatBox.appendChild(messageDiv);
     
     // Vorhandenes Scroll-Verhalten (scrollt bis zum Ende des Chat-Inhalts)
@@ -454,13 +627,16 @@ document.addEventListener('DOMContentLoaded', function () {
       const buttonElement = document.createElement('button');
       buttonElement.className = 'vf-message-button';
       buttonElement.textContent = button.name;
-      buttonElement.addEventListener('click', function () {
+    buttonElement.addEventListener('click', function () {
+      // Nur wenn NICHT "nein, danke" geklickt wurde, setze das chatUsed-Attribut
+      if (button.name.trim().toLowerCase() !== 'nein, danke') {
         // Chat wird genutzt
         setUsedChatAttribute();
-        addUserMessage(button.name);
-        console.log('Button clicked:', button);
-        
-        if (button.name.trim().toLowerCase() === 'nein, danke') {
+      }
+      addUserMessage(button.name);
+      console.log('Button clicked:', button);
+      
+      if (button.name.trim().toLowerCase() === 'nein, danke') {
           // Bei Klick auf "Nein, danke" scrollen wir nicht automatisch, 
           // auch wenn dies die erste Interaktion wäre.
           autoScrollEnabled = false;
@@ -547,7 +723,23 @@ document.addEventListener('DOMContentLoaded', function () {
     for (const trace of response) {
       console.log("Received trace:", trace);
       if (trace.type === 'text') {
-        addAgentMessage(trace.payload.message);
+        // Prüfen, ob ein Slate-Objekt vorhanden ist
+        if (trace.payload && trace.payload.slate) {
+          console.log("Slate-Objekt gefunden:", JSON.stringify(trace.payload.slate, null, 2));
+          const formattedHtml = processSlateContent(trace.payload.slate);
+          if (formattedHtml) {
+            console.log("Formatiertes HTML wird angezeigt:", formattedHtml);
+            addAgentMessage(formattedHtml, true);
+          } else {
+            // Fallback auf normalen Text, wenn Slate nicht verarbeitet werden kann
+            console.log("Fallback auf normalen Text:", trace.payload.message);
+            addAgentMessage(trace.payload.message);
+          }
+        } else {
+          // Normaler Text ohne Slate
+          console.log("Normaler Text ohne Slate:", trace.payload.message);
+          addAgentMessage(trace.payload.message);
+        }
         await delay(1000);
       } else if (trace.type === 'choice') {
         addAgentNormalButton(trace.payload.buttons);
